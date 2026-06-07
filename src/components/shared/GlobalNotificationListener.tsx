@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { pusherClient } from "@/lib/pusher-client"; // Adjust to your exact file name
+import { pusherClient } from "@/lib/pusher-client"; 
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { BellRing } from "lucide-react";
 
 export default function GlobalNotificationListener({ currentUserId }: { currentUserId: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    // 1. Request browser notification permission on mount
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -19,25 +19,24 @@ export default function GlobalNotificationListener({ currentUserId }: { currentU
     const channelName = `user-${currentUserId}`;
     const channel = pusherClient.subscribe(channelName);
 
-    channel.bind("new-notification", (data: { title: string; message: string; type: string; link?: string }) => {
+    channel.bind("new-notification", (data: { title: string; message: string; link?: string }) => {
       
-      // 2. Fire the in-app Sonner Toast
       toast(data.title, {
         description: data.message,
+        icon: <BellRing className="h-4 w-4 text-emerald-600" />,
+        duration: 8000,
         action: data.link ? {
           label: "View",
           onClick: () => router.push(data.link as string)
         } : undefined,
       });
 
-      // 3. Fire the Native Browser Notification
       if ("Notification" in window && Notification.permission === "granted") {
         const browserNotification = new Notification(data.title, {
           body: data.message,
-          icon: "/favicon.ico", // Ensure you have a favicon or replace with a logo URL
+          icon: "/favicon.ico", 
         });
 
-        // If they click the OS notification, focus the window and navigate
         browserNotification.onclick = () => {
           window.focus();
           if (data.link) {
@@ -47,14 +46,12 @@ export default function GlobalNotificationListener({ currentUserId }: { currentU
         };
       }
 
-      // 4. Silently refresh server components
       router.refresh();
     });
-
+    
     return () => {
-      if (pusherClient) {
-        pusherClient.unsubscribe(channelName);
-      }
+      channel.unbind_all();
+      pusherClient.unsubscribe(channelName);
     };
   }, [currentUserId, router]);
 

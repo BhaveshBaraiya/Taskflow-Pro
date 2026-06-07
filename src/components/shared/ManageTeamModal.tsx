@@ -1,33 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { inviteUserToProject } from "@/actions/team";
+import { inviteUserToProject, toggleProjectMember } from "@/actions/team";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Mail } from "lucide-react";
+import { Users, Mail, Search, X, Plus } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 type Member = {
   _id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
 };
 
-export default function ManageTeamModal({ projectId, members = [] }: { projectId: string, members: Member[] }) {
+export default function ManageTeamModal({ projectId, members = [], allWorkspaceMembers = [] }: { projectId: string, members: Member[], allWorkspaceMembers: Member[] }) {
   const [isInviting, setIsInviting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [search, setSearch] = useState("");
 
   const handleInvite = async (formData: FormData) => {
     setIsInviting(true);
     setError("");
     setSuccess("");
-    
     try {
-      // Because we throw standard Errors in our server action, 
-      // we need a slightly different pattern to catch them nicely in the UI
       await inviteUserToProject(projectId, formData);
       setSuccess("Invite sent successfully!");
       (document.getElementById("invite-form") as HTMLFormElement)?.reset();
@@ -37,6 +36,15 @@ export default function ManageTeamModal({ projectId, members = [] }: { projectId
       setIsInviting(false);
     }
   };
+
+  const toggleMember = async (userId: string, isCurrentlyInProject: boolean) => {
+    await toggleProjectMember(projectId, userId, isCurrentlyInProject ? 'remove' : 'add');
+  };
+
+  const filteredMembers = allWorkspaceMembers.filter((m: any) => 
+    m.name.toLowerCase().includes(search.toLowerCase()) || 
+    m.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Dialog>
@@ -50,7 +58,7 @@ export default function ManageTeamModal({ projectId, members = [] }: { projectId
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-zinc-900">Manage Workspace Team</DialogTitle>
           <DialogDescription className="text-zinc-500">
-            Invite colleagues to collaborate on this project.
+            Invite colleagues or manage project members.
           </DialogDescription>
         </DialogHeader>
 
@@ -71,32 +79,57 @@ export default function ManageTeamModal({ projectId, members = [] }: { projectId
           </Button>
         </form>
 
-        {/* Status Messages */}
-        {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
-        {success && <p className="text-xs text-emerald-600 font-medium">{success}</p>}
+        {error && <p className="text-xs text-red-600 font-medium mt-1">{error}</p>}
+        {success && <p className="text-xs text-emerald-600 font-medium mt-1">{success}</p>}
 
-        {/* Member List */}
+        {/* Search All Platform Members */}
+        <div className="relative mt-6">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Input 
+            placeholder="Search all registered users..." 
+            className="pl-9 h-10 bg-zinc-50 border-zinc-200"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="max-h-[150px] overflow-y-auto mt-2 space-y-1 pr-1">
+          {filteredMembers.map((member: any) => {
+            const isInProject = members.some((m: any) => m._id === member._id);
+            return (
+              <div key={member._id} className="flex items-center justify-between p-2 hover:bg-zinc-50 rounded">
+                <div className="flex items-center gap-3">
+                  <UserAvatar user={member} className="h-6 w-6" />
+                  <span className="text-sm text-zinc-700">{member.name}</span>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => toggleMember(member._id, isInProject)}>
+                  {isInProject ? <X className="h-4 w-4 text-red-500" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Active Members List */}
         <div className="mt-6 space-y-4">
           <h4 className="text-sm font-semibold text-zinc-900 border-b border-zinc-100 pb-2">Active Members</h4>
           
           <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
             {members.length === 0 ? (
-              <p className="text-sm text-zinc-500 text-center py-4">No team members invited yet.</p>
+              <p className="text-sm text-zinc-500 text-center py-4">No team members added yet.</p>
             ) : (
               members.map((member) => (
                 <div key={member._id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 border border-zinc-200">
-                      <AvatarFallback className="bg-zinc-100 text-zinc-600 text-xs font-medium">
-                        {member.name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar user={member} className="h-8 w-8" />
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-zinc-900">{member.name}</span>
                       <span className="text-xs text-zinc-500">{member.email}</span>
                     </div>
                   </div>
-                  <span className="text-xs font-medium text-zinc-400 bg-zinc-50 px-2 py-1 rounded">Member</span>
+                  <Button variant="ghost" size="sm" onClick={() => toggleMember(member._id, true)}>
+                    <X className="h-4 w-4 text-zinc-400" />
+                  </Button>
                 </div>
               ))
             )}

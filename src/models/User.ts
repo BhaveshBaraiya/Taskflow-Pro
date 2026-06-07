@@ -17,8 +17,9 @@ const userSchema = new Schema(
       inAppNotifications: { type: Boolean, default: true },
       emailNotifications: { type: Boolean, default: false },
     },
-    emailVerificationCode: { type: String, default: null },
-    emailVerificationExpires: { type: Date, default: null }
+    isVerified: { type: Boolean, default: false },
+    verificationCode: { type: String },
+    verificationCodeExpires: { type: Date },
   },
   { timestamps: true }
 );

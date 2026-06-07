@@ -1,36 +1,32 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Optimizing fonts locally prevents layout shift (Core Web Vitals SEO metric)
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jakarta = Plus_Jakarta_Sans({ 
   subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const mono = JetBrains_Mono({
   subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
 });
 
-// This object is instantly read by Google crawlers
 export const metadata: Metadata = {
-  title: {
-    template: "%s | TaskFlow Pro",
-    default: "TaskFlow Pro - Enterprise Task Management",
-  },
-  description: "Minimalist, impactful project management and team collaboration architecture.",
-  keywords: ["Task Management", "Kanban", "Next.js", "Team Collaboration"],
+  title: "TaskFlow Pro",
+  description: "Performance and clarity. Building systems that scale.",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className="antialiased">
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-zinc-50 font-sans text-zinc-900`}>
+    <html lang="en" className={`${jakarta.variable} ${mono.variable}`}>
+      <body className="antialiased bg-background text-foreground">
         {children}
       </body>
     </html>

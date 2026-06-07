@@ -81,11 +81,9 @@ export async function updateTaskDetails(taskId: string, projectId: string, data:
 export async function updateTaskAssignees(taskId: string, projectId: string, assigneeIds: string[]) {
   await connectDB();
   
-  // Find task to identify added vs removed
   const task = await Task.findById(taskId);
   const oldAssignees = task.assignees.map((a: any) => a.toString());
   
-  // Logic to notify only new assignees
   const newlyAdded = assigneeIds.filter(id => !oldAssignees.includes(id));
   
   await Task.findByIdAndUpdate(taskId, { assignees: assigneeIds });
@@ -114,4 +112,18 @@ export async function deleteTask(taskId: string, projectId: string) {
   await connectDB();
   await Task.findByIdAndDelete(taskId);
   revalidatePath(`/dashboard/projects/${projectId}`);
+}
+
+export async function getMyTasks() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  await connectDB();
+    
+  const tasks = await Task.find({ assignees: session.user.id })
+    .populate("projectId", "title")
+    .populate("assignees", "name avatarUrl")
+    .sort({ dueDate: 1, createdAt: -1 });
+
+  return JSON.parse(JSON.stringify(tasks));
 }

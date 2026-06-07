@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { loginUser } from "@/actions/login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,29 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginPage() {
   const [state, action, isPending] = useActionState(loginUser, null);
+  
+  // Controlled form state to prevent inputs clearing on failed attempts
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync server error to local state
+  useEffect(() => {
+    if (state?.error) {
+      setError(state.error);
+    }
+  }, [state]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear the global server error the moment the user starts correcting their input
+    if (error) {
+      setError(null);
+    }
+  };
 
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-2 bg-white">
@@ -27,7 +49,15 @@ export default function LoginPage() {
           <form action={action} className="space-y-5">
             <div className="space-y-2">
               <Label className="text-zinc-700 font-bold">Work Email</Label>
-              <Input name="email" type="email" placeholder="name@company.com" required className="h-11 bg-zinc-50 border-zinc-200" />
+              <Input 
+                name="email" 
+                type="email" 
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="name@company.com" 
+                required 
+                className="h-11 bg-zinc-50 border-zinc-200" 
+              />
             </div>
             
             <div className="space-y-2">
@@ -39,6 +69,8 @@ export default function LoginPage() {
                 <Input 
                   name="password" 
                   type={showPassword ? "text" : "password"} 
+                  value={formData.password}
+                  onChange={handleInputChange}
                   placeholder="••••••••" 
                   required 
                   className="h-11 bg-zinc-50 border-zinc-200 pr-10" 
@@ -53,10 +85,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {state?.error && (
+            {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 text-sm font-bold rounded-lg border border-red-100">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                {state.error}
+                {error}
               </div>
             )}
 

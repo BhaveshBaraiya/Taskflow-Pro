@@ -174,7 +174,7 @@ export default function UserSettings({ user }: { user: any }) {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Job Title / Badge</Label>
-                  <Input name="jobTitle" defaultValue={user.jobTitle} placeholder="Founder @ T3Universe.de" className="bg-zinc-50 h-10 font-medium" />
+                  <Input name="jobTitle" defaultValue={user.jobTitle} placeholder="Frontend Developer" className="bg-zinc-50 h-10 font-medium" />
                 </div>
                 <Button type="submit" disabled={isSaving} className="w-full sm:w-auto bg-zinc-900 text-white font-bold hover:bg-zinc-800 h-10 px-8 mt-2">
                   {isSaving ? <Spinner className="h-4 w-4 mr-2" /> : null} Save Details

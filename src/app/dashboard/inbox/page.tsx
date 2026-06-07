@@ -51,7 +51,7 @@ export default async function InboxPage({
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] w-full border border-zinc-200 bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] w-full border border-zinc-200 bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className={`shrink-0 border-r border-zinc-200 bg-zinc-50/50 flex flex-col w-72 lg:w-80 xl:w-96 ${activeId ? 'hidden md:flex' : 'flex w-full'}`}>
         <div className="p-4 border-b border-zinc-100 shrink-0 space-y-4">
           <div className="flex items-center justify-between">

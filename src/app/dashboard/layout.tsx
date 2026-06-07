@@ -9,7 +9,6 @@ import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import { Toaster } from "@/components/ui/sonner";
-import RealtimeNotifications from "@/components/shared/RealtimeNotifications";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -30,6 +29,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-full bg-zinc-50 overflow-hidden text-zinc-900 relative">
+      {/* This single listener now handles everything: 
+        Sonner toasts, browser notifications, and routing! 
+      */}
       {session?.user?.id && <GlobalNotificationListener currentUserId={session.user.id} />}
       <Toaster position="top-right" richColors />
 
@@ -50,8 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </aside>
       
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">         
-          <RealtimeNotifications userId={session.user.id} />
+        <div className="flex-1 overflow-y-auto p-4">        
           {children}
         </div>
       </main>

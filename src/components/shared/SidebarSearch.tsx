@@ -4,7 +4,6 @@ import { useState } from "react";
 import { searchUsers, createConversation } from "@/actions/chat";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import UserAvatar from "./UserAvatar";
 
@@ -63,7 +62,7 @@ export default function SidebarSearch() {
                   />
                 <div className="flex flex-col min-w-0 test-2">
                   <span className="text-xs font-bold text-zinc-900 truncate">{user.name}</span>
-                  <span className="text-[10px] text-zinc-500 truncate">{user.email}</span>
+                  <span className="text-[10px] text-zinc-500 truncate">{user.jobTitle}</span>
                 </div>
               </div>
             ))}

@@ -53,10 +53,13 @@ export async function getProjectById(projectId: string) {
   if (!session?.user?.id) return null;
 
   await connectDB();
+    
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return null;
 
   const project = await Project.findOne({ 
     _id: projectId,
-    ownerId: session.user.id
+    workspaceId: user.activeWorkspace
   });
 
   if (!project) return null;

@@ -1,6 +1,5 @@
 import { getProjectById } from "@/actions/project";
 import { getTasks } from "@/actions/task";
-import { getProjectMembers } from "@/actions/team";
 import { notFound } from "next/navigation";
 import EditProjectModal from "@/components/shared/EditProjectModal";
 import ManageTeamModal from "@/components/shared/ManageTeamModal";
@@ -9,24 +8,20 @@ import { deleteProject } from "@/actions/project";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProjectTabs from "@/components/shared/ProjectTabs";
+import { getProjectMembers, getAllWorkspaceMembers } from "@/actions/team";
 
 export default async function SingleProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const projectId = resolvedParams.id;
 
-  const [project, tasks, members] = await Promise.all([
+  const [project, tasks, currentMembers, workspaceMembers] = await Promise.all([
     getProjectById(projectId),
     getTasks(projectId),
-    getProjectMembers(projectId)
+    getProjectMembers(projectId),
+    getAllWorkspaceMembers(projectId)
   ]);
 
   if (!project) notFound();
-
-  const defaultColumns = [
-    { id: "todo", title: "To Do", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-zinc-900" },
-    { id: "in-progress", title: "In Progress", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-blue-600" },
-    { id: "done", title: "Completed", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-emerald-600" }
-  ];
   
   const columns = (project.columns && project.columns.length > 0) 
     ? project.columns 
@@ -35,6 +30,9 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
         { id: "in-progress", title: "In Progress", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-blue-600" },
         { id: "done", title: "Completed", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-emerald-600" }
       ];
+
+  // We assign workspaceMembers to a variable to explicitly avoid naming collisions in the return block
+  const allWorkspaceMembersList = workspaceMembers || [];
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col space-y-6">
@@ -45,7 +43,12 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
         </div>
         
         <div className="flex gap-2">
-          <ManageTeamModal projectId={projectId} members={members} />
+          {/* Passing both the current project members and the full workspace list to the modal */}
+          <ManageTeamModal 
+            projectId={projectId} 
+            members={currentMembers} 
+            allWorkspaceMembers={allWorkspaceMembersList}
+          />
           <EditProjectModal project={project} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -72,7 +75,7 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
       <ProjectTabs 
         project={project} 
         tasks={tasks} 
-        members={members} 
+        members={currentMembers} 
         safeColumns={columns}
       />
     </div>
