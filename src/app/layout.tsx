@@ -15,7 +15,10 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TaskFlow Pro",
+  title: {
+    default: "TaskFlow Pro - Performance & Clarity for Scaling Teams",
+    template: "%s | TaskFlow Pro",
+  },
   description: "Performance and clarity. Building systems that scale.",
 };
 
