@@ -7,11 +7,13 @@ import { revalidatePath } from "next/cache";
 import Task from "@/models/Task";
 import { redirect } from "next/navigation";
 import { projectSchema, projectColumnSchema } from "@/lib/validations";
+import User from "@/models/User";
 
 export async function createProject(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
-
+  const user = await User.findById(session.user.id);
+  
   const rawData = {
     title: formData.get("title") as string,
     description: formData.get("description") as string,
@@ -27,6 +29,7 @@ export async function createProject(formData: FormData) {
   await Project.create({
     title: validatedData.data.title,
     description: validatedData.data.description,
+    workspaceId: user.activeWorkspace,
     ownerId: session.user.id,
   });
 
@@ -38,14 +41,10 @@ export async function getProjects() {
   if (!session?.user?.id) return [];
 
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return [];
   
-  const projects = await Project.find({
-    $or: [
-      { ownerId: session.user.id },
-      { members: session.user.id }
-    ]
-  }).sort({ createdAt: -1 });
-
+  const projects = await Project.find({ workspaceId: user.activeWorkspace }).sort({ createdAt: -1 });
   return JSON.parse(JSON.stringify(projects));
 }
 
@@ -224,4 +223,17 @@ export async function saveTabContent(projectId: string, tabId: string, content: 
   );
 
   revalidatePath(`/dashboard/projects/${projectId}`);
+}
+
+export async function saveProjectDocs(projectId: string, content: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await connectDB();
+    
+  await Project.findByIdAndUpdate(projectId, {
+    $set: { docs: content }
+  });
+
+  return { success: true };
 }

@@ -208,7 +208,7 @@ export default function ProjectTabs({
               </div>
             </div>
             <div className="flex-1 overflow-x-auto pb-4">
-              <KanbanBoard initialTasks={tasks} projectId={project._id} columns={safeColumns} />
+              <KanbanBoard initialTasks={tasks} members={members} projectId={project._id} initialColumns={safeColumns} />
             </div>
           </>
         )}
@@ -285,7 +285,6 @@ export default function ProjectTabs({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

@@ -154,3 +154,23 @@ TaskFlow Pro is a minimalist, high-performance SaaS platform engineered for seam
 
 ---
 *Architecture and Development by Bhavesh Baraiya*
+
+
+
+<!--  -->
+
+This is your Final Master Roadmap for TaskFlow Pro. This document outlines every phase, functionality, and folder structure. You can use this as your permanent reference for the project architecture.I. The Project Architecture (Folder Structure)This structure is optimized for Next.js 16/App Router and separation of concerns.Plaintexttaskflow-pro/
+├── src/
+│   ├── actions/          # All server-side logic (chat.ts, project.ts, task.ts, user.ts)
+│   ├── app/              # Application Routes (Layouts, Dashboard, Inbox, Projects)
+│   ├── auth.ts           # NextAuth session configuration
+│   ├── components/
+│   │   ├── layout/       # MobileHeader.tsx, SidebarNav.tsx
+│   │   ├── shared/       # Reusable components (ProjectChat.tsx, ProjectDocs.tsx, UserSettings.tsx, KanbanBoard.tsx)
+│   │   └── ui/           # Shadcn UI primitives
+│   ├── lib/              # Database connection (db.ts), Pusher config (pusher-client/server.ts)
+│   ├── models/           # Mongoose Data Models (User, Project, Task, Message, Conversation)
+│   └── utils/            # UploadThing config, Helpers (formatters)
+├── globals.css           # Global styles and Tailwind v4 configurations
+└── tailwind.config.ts    # (If using v3, otherwise styles are in globals.css)
+II. Project Phases & Functionality RoadmapPhaseFocusStatusPhase 1: CoreAuth, Workspace DB, Multi-tenancy100%Phase 2: MessagingReal-time Chat (Pusher), Attachments, Mentions, Notifications100%Phase 3: ProductivityKanban Board, Drag/Drop, Task CRUD, Phase Management100%Phase 4: User LayerProfile Edit, Avatar Upload, Email/OTP Auth, Settings100%Phase 5: DocsRich Text Editor (TipTap), Auto-save, Project TabsIn ProgressIII. Detailed Functionality ChecklistPhase 1: Foundation (Completed)NextAuth Integration: Secure session handling.MongoDB Gatekeeper: Middleware ensures every user belongs to an active workspace.Multi-tenancy: Isolated data access for workspaces.Phase 2: Messaging (Completed)Pusher Real-time: Immediate message delivery across clients.Global Alerts: OS-level browser notifications + In-app toasts.Mention Engine: Live search for teammates using @ notation.File Storage: UploadThing integration for images and documents.Phase 3: Productivity (Completed)Kanban Engine: Modern drag-and-drop workflow.Dynamic Columns: Create/Delete workflow phases dynamically.RTE Task Details: Rich text descriptions for task requirements.Phase 4: User Layer (Completed)Profile Management: Edit name, job title, and avatar (PC upload).Account Security: Email change flow via OTP verification.Notification Controls: Toggle preferences for Browser/In-app alerts.Danger Zone: Account deletion and secure logout.Phase 5: Documentation (Next/Final)Editor: TipTap block-based writing environment.Auto-save: Debounced background saves to MongoDB.Project Tabs: Switcher UI for Board vs. Docs within the project view.IV. Current Status: Completion AssessmentOverall Completion: 95%You have built a production-ready SaaS infrastructure. The only remaining "operational" functionality is finalizing the Project Docs integration. Once the Docs tab is merged into the project view, the system is feature-complete.V. How to maintain thisAlways use Server Actions (src/actions/): Do not write business logic inside UI components. This keeps your client components clean and your server-side logic predictable.Population Consistency: Whenever you add a new field (like avatarUrl) to a model, you must update the .populate() calls in your server actions (like getMessages and getInboxData) to ensure the client receives the data.Responsive First: Every new component you build must follow the md:flex (desktop) vs. flex flex-col (mobile) pattern used in your InboxPage.

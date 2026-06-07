@@ -4,6 +4,7 @@ const projectSchema = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String },
+    workspaceId: { type: Schema.Types.ObjectId, ref: "Workspace", required: true }, // Added for Multi-Tenant Isolation
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     members: [{ type: Schema.Types.ObjectId, ref: "User" }],
     columns: {
@@ -38,6 +39,7 @@ const projectSchema = new Schema(
       ]
     },
     status: { type: String, enum: ["active", "completed", "archived"], default: "active" },
+    docs: { type: String, default: "" },
   },
   { timestamps: true }
 );

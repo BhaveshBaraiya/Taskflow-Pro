@@ -8,6 +8,7 @@ import { searchUsers, createConversation } from "@/actions/chat";
 import { Search, Plus, X, Users, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
+import UserAvatar from "./UserAvatar";
 
 type UserType = { _id: string; name: string; email: string };
 
@@ -46,23 +47,20 @@ export default function CreateChatModal() {
   };
 
   const handleCreate = async () => {
-    if (selectedUsers.length === 0) return;
-    setIsCreating(true);
-    
-    const isGroup = selectedUsers.length > 1;
-    const userIds = selectedUsers.map(u => u._id);
-    
-    try {
-      await createConversation(userIds, isGroup, groupName);
-      setIsOpen(false);
-      // Reset state
-      setSelectedUsers([]);
-      setGroupName("");
-    } catch (error) {
-      console.error(error);
-      setIsCreating(false);
-    }
-  };
+  if (selectedUsers.length === 0) return;
+  setIsCreating(true);
+  
+  const isGroup = selectedUsers.length > 1;
+  const userIds = selectedUsers.map(u => u._id);
+  
+  try {
+    await createConversation(userIds, isGroup, groupName);  
+    setIsOpen(false); 
+  } catch (error) {
+    console.error(error);
+    setIsCreating(false);
+  }
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -79,8 +77,7 @@ export default function CreateChatModal() {
           <p className="text-sm font-medium text-zinc-500 mt-1">Search for team members to start chatting.</p>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Selected Users Chips */}
+        <div className="p-6 space-y-6">          
           {selectedUsers.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {selectedUsers.map(user => (
@@ -94,8 +91,7 @@ export default function CreateChatModal() {
               ))}
             </div>
           )}
-
-          {/* Group Name Input (Only shows if multiple users selected) */}
+          
           {selectedUsers.length > 1 && (
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Group Name</label>
@@ -107,8 +103,7 @@ export default function CreateChatModal() {
               />
             </div>
           )}
-
-          {/* User Search */}
+          
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input 
@@ -119,8 +114,7 @@ export default function CreateChatModal() {
             />
             {isSearching && <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />}
           </div>
-
-          {/* Search Results */}
+          
           {results.length > 0 && (
             <div className="border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
               {results.map(user => {
@@ -134,9 +128,10 @@ export default function CreateChatModal() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-zinc-200 text-zinc-700 text-xs font-bold">{user.name.substring(0,2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <UserAvatar 
+                          user={{ name: user.name, avatarUrl: user.avatarUrl }} 
+                          className="h-8 w-8" 
+                        />
                       <div>
                         <p className="text-sm font-bold text-zinc-900">{user.name}</p>
                         <p className="text-xs font-medium text-zinc-500">{user.email}</p>
