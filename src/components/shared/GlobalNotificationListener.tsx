@@ -51,7 +51,7 @@ export default function GlobalNotificationListener({ currentUserId }: { currentU
     
     return () => {
       channel.unbind_all();
-      pusherClient.unsubscribe(channelName);
+      pusherClient?.unsubscribe(channelName);
     };
   }, [currentUserId, router]);
 

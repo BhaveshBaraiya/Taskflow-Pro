@@ -7,8 +7,8 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { taskSchema } from "@/lib/validations";
 import Project from "@/models/Project";
-import mongoose from "mongoose";
 import { pusherServer } from "@/lib/pusher-server";
+import { getZodErrorMessage } from "@/lib/validation-helper";
 
 export async function createTask(formData: FormData) {
   const session = await auth();
@@ -26,7 +26,9 @@ export async function createTask(formData: FormData) {
   };
   
   const validatedData = taskSchema.safeParse(rawData);
-  if (!validatedData.success) throw new Error(validatedData.error.errors[0].message);
+  if (!validatedData.success) {
+    throw new Error(getZodErrorMessage(validatedData.error));
+  }
 
   await connectDB();
   const project = await Project.findById(validatedData.data.projectId).select("workspaceId title");
@@ -42,9 +44,9 @@ export async function createTask(formData: FormData) {
     workspaceId: project.workspaceId 
   });
 
-  if (validatedData.data.assignees.length > 0) {
-    const notifications = validatedData.data.assignees
-      .filter((id: string) => id !== session.user.id)
+  if (assignees.length > 0) {
+    const notifications = assignees
+      .filter((id: string) => id !== session?.user?.id)
       .map((id: string) => ({
         recipientId: id,
         title: "New Task Assigned",

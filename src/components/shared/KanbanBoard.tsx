@@ -118,6 +118,9 @@ export default function KanbanBoard({
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
+                    style={{
+                    ...provided.draggableProps.style,
+                  } as any}
                     className={`flex flex-col w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2" : ""}`}
                   >
                     <div 
@@ -149,6 +152,7 @@ export default function KanbanBoard({
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
+                                    style={provided.draggableProps.style as React.CSSProperties}
                                   >
                                     <TaskCard task={task} onClick={() => setSelectedTask(task)} />
                                   </div>

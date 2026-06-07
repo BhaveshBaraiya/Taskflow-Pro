@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import UserAvatar from "./UserAvatar";
 
-type UserType = { _id: string; name: string; email: string };
+type UserType = { _id: string; name: string; email: string; avatarUrl?: string };
 
 export default function CreateChatModal() {
   const [isOpen, setIsOpen] = useState(false);

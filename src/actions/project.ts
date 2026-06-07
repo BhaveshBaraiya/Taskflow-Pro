@@ -8,6 +8,7 @@ import Task from "@/models/Task";
 import { redirect } from "next/navigation";
 import { projectSchema, projectColumnSchema } from "@/lib/validations";
 import User from "@/models/User";
+import { getZodErrorMessage } from "@/lib/validation-helper";
 
 export async function createProject(formData: FormData) {
   const session = await auth();
@@ -21,7 +22,7 @@ export async function createProject(formData: FormData) {
 
   const validatedData = projectSchema.safeParse(rawData);
   if (!validatedData.success) {
-    throw new Error(validatedData.error.errors[0].message);
+    throw new Error(getZodErrorMessage(validatedData.error));
   }
 
   await connectDB();
@@ -93,7 +94,7 @@ export async function updateProject(projectId: string, formData: FormData) {
 
   const validatedData = projectSchema.safeParse(rawData);
   if (!validatedData.success) {
-    throw new Error(validatedData.error.errors[0].message);
+    throw new Error(getZodErrorMessage(validatedData.error));
   }
 
   await connectDB();
@@ -115,7 +116,7 @@ export async function addProjectColumn(projectId: string, formData: FormData) {
   const validatedData = projectColumnSchema.safeParse(rawData);
   
   if (!validatedData.success) {
-    throw new Error(validatedData.error.errors[0].message);
+    throw new Error(getZodErrorMessage(validatedData.error));
   }
 
   const title = validatedData.data.title;

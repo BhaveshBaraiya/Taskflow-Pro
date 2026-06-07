@@ -82,10 +82,9 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
     participantsToNotify = (conversation?.participants || []).map((id: any) => id.toString());
   }
 
-  // 3. Broadcast to EVERYONE'S personal channel (except the sender)
   const senderName = populatedMessage.senderId.name;
   const notifications = participantsToNotify
-    .filter(userId => userId !== session.user.id) // Don't notify the person typing
+    .filter(userId => userId !== session?.user?.id)
     .map(userId => 
       pusherServer.trigger(`user-${userId}`, "new-notification", {
         title: `New message from ${senderName}`,
@@ -130,8 +129,7 @@ export async function createConversation(userIds: string[], isGroup: boolean, na
       participants: { $all: [session.user.id, userIds[0]] }
     });
 
-    if (existingConv) {
-      // Chat exists! Just redirect to it.
+    if (existingConv) {      
       redirect(`/dashboard/inbox?type=dm&id=${existingConv._id}`);
     }
   }

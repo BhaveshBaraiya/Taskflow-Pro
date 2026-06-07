@@ -3,13 +3,14 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { loginSchema } from "@/lib/validations";
+import { getZodErrorMessage } from "@/lib/validation-helper";
 
 export async function loginUser(prevState: any, formData: FormData) {
   const rawData = Object.fromEntries(formData);
   const validatedData = loginSchema.safeParse(rawData);
 
   if (!validatedData.success) {
-    return { error: validatedData.error.errors[0].message };
+    return { error: getZodErrorMessage(validatedData.error) };
   }
 
   try {
@@ -22,6 +23,7 @@ export async function loginUser(prevState: any, formData: FormData) {
     if (error instanceof AuthError) {
       return { error: "Invalid email or password." };
     }
+
     throw error;
   }
 }
