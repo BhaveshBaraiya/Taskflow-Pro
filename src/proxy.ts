@@ -8,7 +8,11 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  // Add forgot-password to the list of allowed auth pages
+  const isAuthPage = 
+    pathname.startsWith("/login") || 
+    pathname.startsWith("/register") || 
+    pathname.startsWith("/forgot-password");
 
   if (isAuthPage) {
     if (isLoggedIn) {

@@ -3,8 +3,7 @@ import Link from "next/link";
 import { FolderKanban, Users, Clock, ArrowRight } from "lucide-react";
 import CreateProjectModal from "@/components/shared/CreateProjectModal";
 
-export default async function ProjectsHubPage() {
-  // Fetches the array of all projects you own or are invited to
+export default async function ProjectsHubPage() {  
   const projects = await getProjects();
 
   return (

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { KanbanSquare, Key, StickyNote, FileText, Plus, X, GripHorizontal, Check, Bold, Italic, List, Link2 } from "lucide-react";
+import { KanbanSquare, Key, StickyNote, FileText, Plus, X, GripHorizontal, Bold, Italic, List, Link2 } from "lucide-react";
 import { addProjectTab, saveProjectTabs, deleteProjectTab } from "@/actions/project";
 import { Spinner } from "@/components/ui/spinner";
 import KanbanBoard from "@/components/shared/KanbanBoard";
@@ -32,17 +32,21 @@ export default function ProjectTabs({
   const [tabsList, setTabsList] = useState<TabData[]>(initialTabs);
   const [activeTab, setActiveTab] = useState(initialTabs[0].id);
   const [isAddingTab, setIsAddingTab] = useState(false);
-  const [savingDocs, setSavingDocs] = useState<Record<string, boolean>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (project.tabs && project.tabs.length > 0) {
-      setTabsList(project.tabs);
-    }
-  }, [project.tabs]);
+  
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateTabData = (id: string, updates: Partial<TabData>) => {
-    setTabsList(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setTabsList(prev => {
+      const next = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        saveProjectTabs(project._id, next).catch(console.error);
+      }, 1000);
+      
+      return next;
+    });
   };
 
   const handleDragStart = (e: React.DragEvent, tabId: string) => {
@@ -103,22 +107,11 @@ export default function ProjectTabs({
     try { await deleteProjectTab(project._id, tabId); } catch (error) { console.error(error); }
   };
 
-  const handleSaveAllChanges = async (tabId: string) => {
-    setSavingDocs(prev => ({ ...prev, [tabId]: true }));
-    try {
-      await saveProjectTabs(project._id, tabsList);
-      setTimeout(() => setSavingDocs(prev => ({ ...prev, [tabId]: false })), 1000);
-    } catch (error) {
-      console.error(error);
-      setSavingDocs(prev => ({ ...prev, [tabId]: false }));
-    }
-  };
-
   const getIcon = (type: string) => {
-    if (type === "tasks") return <KanbanSquare className="h-4 w-4 mr-2" />;
-    if (type === "access") return <Key className="h-4 w-4 mr-2" />;
-    if (type === "notes") return <StickyNote className="h-4 w-4 mr-2" />;
-    return <FileText className="h-4 w-4 mr-2" />;
+    if (type === "tasks") return <KanbanSquare className="h-4 w-4 mr-2 shrink-0" />;
+    if (type === "access") return <Key className="h-4 w-4 mr-2 shrink-0" />;
+    if (type === "notes") return <StickyNote className="h-4 w-4 mr-2 shrink-0" />;
+    return <FileText className="h-4 w-4 mr-2 shrink-0" />;
   };
 
   const currentTab = tabsList.find(t => t.id === activeTab);
@@ -126,9 +119,9 @@ export default function ProjectTabs({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       
-      <div className="flex items-center justify-between border-b border-zinc-200 shrink-0 w-full bg-transparent">
+      <div className="flex items-center justify-between border-b border-zinc-200 shrink-0 w-full bg-transparent overflow-x-auto no-scrollbar">
         
-        <div className="flex-1 flex overflow-x-auto no-scrollbar">
+        <div className="flex-1 flex w-full">
           {tabsList.map((tab) => (
             <div 
               key={tab.id}
@@ -138,20 +131,20 @@ export default function ProjectTabs({
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, tab.id)}
               onClick={() => setActiveTab(tab.id)}
-              className={`group relative flex items-center shrink-0 cursor-grab active:cursor-grabbing border-b-2 px-6 py-3.5 text-sm font-bold transition-all ${
+              className={`group relative flex items-center shrink-0 cursor-grab active:cursor-grabbing border-b-2 px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-bold transition-all ${
                 activeTab === tab.id 
                   ? "border-zinc-900 text-zinc-900 bg-white" 
                   : "border-transparent text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50/50"
               }`}
             >
-              <GripHorizontal className="h-3 w-3 mr-2 opacity-0 group-hover:opacity-100 transition-opacity absolute left-2 text-zinc-300" />
+              <GripHorizontal className="h-3 w-3 mr-2 opacity-0 group-hover:opacity-100 transition-opacity absolute left-1 sm:left-2 text-zinc-300 hidden sm:block" />
               {getIcon(tab.type)}
-              {tab.title}
+              <span className="truncate max-w-[100px] sm:max-w-[200px]">{tab.title}</span>
               
               {tab.type === "doc" && (
                 <button 
                   onClick={(e) => handleDeleteTab(tab.id, e)} 
-                  className="ml-3 p-1 rounded-md text-zinc-300 hover:bg-red-100 hover:text-red-600 transition-all z-10"
+                  className="ml-2 sm:ml-3 p-1 rounded-md text-zinc-300 hover:bg-red-100 hover:text-red-600 transition-all z-10 shrink-0"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -160,20 +153,20 @@ export default function ProjectTabs({
           ))}
         </div>
 
-        <div className="shrink-0 pl-4 py-2 border-l border-zinc-200 bg-zinc-50/50 flex items-center">
+        <div className="shrink-0 pl-2 sm:pl-4 py-2 border-l border-zinc-200 bg-zinc-50/50 flex items-center sticky right-0">
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 text-zinc-900 bg-white font-bold border-zinc-300 shadow-sm hover:bg-zinc-100 mr-4">
-                <Plus className="h-4 w-4 mr-1" /> Add Tab
+              <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm text-zinc-900 bg-white font-bold border-zinc-300 shadow-sm hover:bg-zinc-100 mr-2 sm:mr-4 shrink-0">
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" /> <span className="hidden sm:inline">Add Tab</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px] border-zinc-200 bg-white p-6 shadow-xl">
-              <DialogHeader><DialogTitle className="font-bold text-zinc-900">Create New Tab</DialogTitle></DialogHeader>
+            <DialogContent className="w-[95vw] sm:max-w-[400px] border-zinc-200 bg-white p-4 sm:p-6 shadow-xl rounded-2xl">
+              <DialogHeader><DialogTitle className="font-extrabold text-zinc-900 text-left">Create New Tab</DialogTitle></DialogHeader>
               <form onSubmit={handleAddTab} className="space-y-4 mt-2">
                 <div className="space-y-2">
-                  <Input name="title" placeholder="e.g., Marketing Assets" required className="bg-zinc-50 focus:bg-white" />
+                  <Input name="title" placeholder="e.g., Marketing Assets" required className="bg-zinc-50 focus:bg-white h-10 sm:h-11 rounded-xl focus:ring-1 focus:ring-zinc-900" />
                 </div>
-                <Button type="submit" disabled={isAddingTab} className="bg-zinc-900 text-white w-full font-bold">
+                <Button type="submit" disabled={isAddingTab} className="bg-zinc-900 text-white w-full font-bold h-10 sm:h-11 rounded-xl">
                   {isAddingTab ? <Spinner className="h-4 w-4" /> : "Create Tab"}
                 </Button>
               </form>
@@ -182,28 +175,26 @@ export default function ProjectTabs({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col pt-6 m-0 overflow-hidden">
+      <div className="flex-1 flex flex-col pt-4 sm:pt-6 m-0 overflow-hidden">
         {currentTab?.type === "tasks" && (
           <>
-            <div className="flex flex-col gap-2 mb-6 shrink-0">
+            <div className="flex flex-col gap-2 mb-4 sm:mb-6 shrink-0">
               <Input 
                 value={currentTab.title} 
                 onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-2xl font-bold text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
+                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
               />
-              <div className="flex justify-between items-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-4">
                 <Input 
                   value={currentTab.description || ""}
                   onChange={(e) => updateTabData(currentTab.id, { description: e.target.value })}
                   placeholder="Add a workflow description..."
-                  className="text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent flex-1"
+                  className="text-xs sm:text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent w-full sm:flex-1"
                 />
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button onClick={() => handleSaveAllChanges(currentTab.id)} variant="ghost" size="sm" className="h-8 font-bold text-zinc-700">
-                    {savingDocs[currentTab.id] ? <Check className="h-4 w-4 mr-2 text-emerald-600" /> : null}
-                    {savingDocs[currentTab.id] ? "Saved" : "Save Name"}
-                  </Button>
-                  <CreateTaskModal projectId={project._id} columns={safeColumns} members={members} />
+                <div className="w-full sm:w-auto shrink-0 flex">
+                  <div className="w-full sm:w-auto">
+                    <CreateTaskModal projectId={project._id} columns={safeColumns} members={members} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -214,73 +205,62 @@ export default function ProjectTabs({
         )}
 
         {currentTab?.type === "access" && (
-          <div className="max-w-4xl h-full flex flex-col space-y-4 overflow-y-auto">
+          <div className="max-w-4xl h-full flex flex-col space-y-3 sm:space-y-4 overflow-y-auto pb-6">
             <div className="flex flex-col gap-1 shrink-0">
               <Input 
                 value={currentTab.title} 
                 onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-2xl font-bold text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
+                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
               />
               <Input 
                 value={currentTab.description || ""}
                 onChange={(e) => updateTabData(currentTab.id, { description: e.target.value })}
                 placeholder="Securely document credentials..."
-                className="text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent w-full"
+                className="text-xs sm:text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent w-full"
               />
             </div>
-            <div className="flex-1 border border-zinc-200 rounded-2xl bg-white flex flex-col overflow-hidden shadow-sm relative min-h-[400px]">
-              <div className="border-b border-zinc-100 bg-zinc-50/80 p-2 flex gap-2 justify-end">
-                <Button onClick={() => handleSaveAllChanges(currentTab.id)} variant="ghost" size="sm" className="text-zinc-700 h-8 font-bold">
-                  {savingDocs[currentTab.id] ? <Check className="h-4 w-4 mr-2 text-emerald-600" /> : null}
-                  {savingDocs[currentTab.id] ? "Saved" : "Save All Changes"}
-                </Button>
-              </div>
+            <div className="flex-1 border border-zinc-200 rounded-xl sm:rounded-2xl bg-white flex flex-col overflow-hidden shadow-sm relative min-h-[300px] sm:min-h-[400px]">
               <Textarea 
                 value={currentTab.content || ""}
                 onChange={(e) => updateTabData(currentTab.id, { content: e.target.value })}
                 placeholder="DEV_DB_URL=mongodb+srv://..." 
-                className="flex-1 resize-none border-none focus-visible:ring-0 p-6 text-base text-zinc-800 font-mono leading-relaxed bg-white"
+                className="flex-1 resize-none border-none focus-visible:ring-0 p-4 sm:p-6 text-xs sm:text-base text-zinc-800 font-mono leading-relaxed bg-white"
               />
             </div>
           </div>
         )}
 
         {(currentTab?.type === "notes" || currentTab?.type === "doc") && (
-          <div className="max-w-4xl h-full flex flex-col space-y-4 overflow-y-auto">
+          <div className="max-w-4xl h-full flex flex-col space-y-3 sm:space-y-4 overflow-y-auto pb-6">
             <div className="flex flex-col gap-1 shrink-0">
               <Input 
                 value={currentTab.title} 
                 onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-2xl font-bold text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
+                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
               />
               <Input 
                 value={currentTab.description || ""}
                 onChange={(e) => updateTabData(currentTab.id, { description: e.target.value })}
                 placeholder="Document purpose or summary..."
-                className="text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent w-full"
+                className="text-xs sm:text-sm font-medium text-zinc-500 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent w-full"
               />
             </div>
-            <div className="flex-1 border border-zinc-200 rounded-2xl bg-white flex flex-col overflow-hidden shadow-sm relative min-h-[400px]">
-              <div className="border-b border-zinc-100 bg-zinc-50/80 p-2 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-zinc-600 hover:bg-zinc-200"><Bold className="h-4 w-4"/></Button>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-zinc-600 hover:bg-zinc-200"><Italic className="h-4 w-4"/></Button>
-                  <div className="w-[1px] h-4 bg-zinc-300 mx-1" />
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-zinc-600 hover:bg-zinc-200"><List className="h-4 w-4"/></Button>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-zinc-600 hover:bg-zinc-200"><Link2 className="h-4 w-4"/></Button>
+            <div className="flex-1 border border-zinc-200 rounded-xl sm:rounded-2xl bg-white flex flex-col overflow-hidden shadow-sm relative min-h-[300px] sm:min-h-[400px]">
+              <div className="border-b border-zinc-100 bg-zinc-50/80 p-1.5 sm:p-2 flex items-center justify-between overflow-x-auto no-scrollbar gap-4">
+                <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-600 hover:bg-zinc-200"><Bold className="h-3.5 w-3.5 sm:h-4 sm:w-4"/></Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-600 hover:bg-zinc-200"><Italic className="h-3.5 w-3.5 sm:h-4 sm:w-4"/></Button>
+                  <div className="w-[1px] h-4 bg-zinc-300 mx-0.5 sm:mx-1" />
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-600 hover:bg-zinc-200"><List className="h-3.5 w-3.5 sm:h-4 sm:w-4"/></Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-600 hover:bg-zinc-200"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4"/></Button>
                 </div>
-                
-                <Button onClick={() => handleSaveAllChanges(currentTab.id)} variant="ghost" size="sm" className="text-zinc-700 h-8 font-bold">
-                  {savingDocs[currentTab.id] ? <Check className="h-4 w-4 mr-2 text-emerald-600" /> : null}
-                  {savingDocs[currentTab.id] ? "Saved" : "Save All Changes"}
-                </Button>
               </div>
 
               <Textarea 
                 value={currentTab.content || ""}
                 onChange={(e) => updateTabData(currentTab.id, { content: e.target.value })}
                 placeholder="Start typing your document here..." 
-                className="flex-1 resize-none border-none focus-visible:ring-0 p-6 text-base text-zinc-800 leading-relaxed bg-white"
+                className="flex-1 resize-none border-none focus-visible:ring-0 p-4 sm:p-6 text-sm sm:text-base text-zinc-800 leading-relaxed bg-white"
               />
             </div>
           </div>

@@ -28,7 +28,7 @@ export default function EditProjectModal({ project }: { project: any }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 hidden sm:flex">
+        <Button variant="outline" className="bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900">
           <Edit2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>

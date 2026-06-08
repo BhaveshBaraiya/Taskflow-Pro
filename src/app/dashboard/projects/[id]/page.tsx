@@ -31,7 +31,6 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
         { id: "done", title: "Completed", colorClass: "bg-zinc-50 border-zinc-200", dotClass: "bg-emerald-600" }
       ];
 
-  // We assign workspaceMembers to a variable to explicitly avoid naming collisions in the return block
   const allWorkspaceMembersList = workspaceMembers || [];
 
   return (
@@ -42,8 +41,7 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
           <p className="text-sm font-medium text-zinc-500 mt-1 max-w-2xl">{project.description}</p>
         </div>
         
-        <div className="flex gap-2">
-          {/* Passing both the current project members and the full workspace list to the modal */}
+        <div className="flex flex-wrap items-center gap-2">
           <ManageTeamModal 
             projectId={projectId} 
             members={currentMembers} 
@@ -52,7 +50,7 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
           <EditProjectModal project={project} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="bg-white border-zinc-200 text-red-600 hover:bg-red-50 hidden sm:flex font-bold">
+              <Button variant="outline" className="bg-white border-zinc-200 text-red-600 hover:bg-red-50 flex font-bold">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
