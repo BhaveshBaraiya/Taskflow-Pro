@@ -12,12 +12,10 @@ import { Spinner } from "@/components/ui/spinner";
 export default function LoginPage() {
   const [state, action, isPending] = useActionState(loginUser, null);
   
-  // Controlled form state to prevent inputs clearing on failed attempts
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Sync server error to local state
+ 
   useEffect(() => {
     if (state?.error) {
       setError(state.error);
@@ -63,7 +61,9 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-zinc-700 font-bold">Password</Label>
-                <Link href="#" className="text-sm font-medium text-zinc-500 hover:text-zinc-900">Forgot password?</Link>
+                <Link href="/forgot-password" className="text-sm font-medium text-zinc-500 hover:text-zinc-900">
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <Input 

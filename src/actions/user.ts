@@ -14,9 +14,8 @@ export async function updateUserProfile(formData: FormData) {
   const browserNotifications = formData.get("browserNotifications") === "on";
   const inAppNotifications = formData.get("inAppNotifications") === "on";
   
-  let avatarUrl = formData.get("avatarUrl") as string; // Keep existing if no new file
-
-  // Handle PC File Upload (Convert to Base64)
+  let avatarUrl = formData.get("avatarUrl") as string;
+  
   const file = formData.get("avatarFile") as File;
   if (file && file.size > 0) {
     if (file.size > 2 * 1024 * 1024) throw new Error("File size must be less than 2MB");

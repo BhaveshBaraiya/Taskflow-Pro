@@ -71,8 +71,28 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
   
   const newMessage = await Message.create(messageData);
   const populatedMessage = await Message.findById(newMessage._id).populate("senderId", "name email avatarUrl");
+  
+  const leanMessage = {
+    _id: populatedMessage._id.toString(),
+    text: populatedMessage.text ? populatedMessage.text.substring(0, 3000) : "",
+    senderId: {
+      _id: populatedMessage.senderId._id.toString(),
+      name: populatedMessage.senderId.name,
+      email: populatedMessage.senderId.email,
+      avatarUrl: populatedMessage.senderId.avatarUrl?.startsWith("http") 
+        ? populatedMessage.senderId.avatarUrl 
+        : null,
+    },
+    createdAt: populatedMessage.createdAt,
+    attachments: populatedMessage.attachments?.map((attachment: any) => ({
+      name: attachment.name,
+      fileType: attachment.fileType,
+      url: attachment.url?.startsWith("http") ? attachment.url : null
+    })) || []
+  };
 
-  await pusherServer.trigger(chatId, "new-message", JSON.parse(JSON.stringify(populatedMessage)));
+  await pusherServer.trigger(chatId, "new-message", JSON.parse(JSON.stringify(leanMessage)));
+
   let participantsToNotify: string[] = [];
   if (type === "project") {
     const project = await Project.findById(chatId).select("members ownerId");

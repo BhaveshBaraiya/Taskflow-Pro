@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import { Toaster } from "@/components/ui/sonner";
+import { SessionProvider } from "next-auth/react";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -48,7 +49,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="flex-1 overflow-y-auto py-4">
           <SidebarNav />
         </div>
-        <UserSettings user={serializedUser} />
+        <SessionProvider>
+          <UserSettings user={serializedUser} />
+        </SessionProvider>
       </aside>
       
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">

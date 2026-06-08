@@ -2,7 +2,8 @@
 
 import { useState, useRef } from "react";
 import { updateUserProfile, deleteAccount, requestEmailChange, verifyEmailChange } from "@/actions/user";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 
 export default function UserSettings({ user }: { user: any }) {
+  const { update } = useSession();
+  const router = useRouter();
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "danger">("profile");
   const [isSaving, setIsSaving] = useState(false);
@@ -48,10 +52,18 @@ export default function UserSettings({ user }: { user: any }) {
     if (selectedFile) formData.append("avatarFile", selectedFile);
     formData.append("avatarUrl", user.avatarUrl || "");
 
-    try {
+    try {     
       await updateUserProfile(formData);
+            
+      await update({ 
+        name: formData.get("name") 
+      });
+
       toast.success("Profile updated successfully");
       setIsOpen(false);
+            
+      router.refresh();
+      
     } catch (error: any) {
       toast.error(error.message || "Failed to update profile");
     } finally {
