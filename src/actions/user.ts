@@ -54,9 +54,7 @@ export async function requestEmailChange(newEmail: string) {
     emailVerificationCode: code,
     emailVerificationExpires: expires
   });
-
-  // TODO: In production, use standard Resend or Nodemailer to email the user.
-  // For development, we log it so you can test the UI instantly!
+  
   console.log(`\n\n📧 EMAIL SENT TO ${newEmail}\nYour Verification Code is: ${code}\n\n`);
 
   return { success: true };

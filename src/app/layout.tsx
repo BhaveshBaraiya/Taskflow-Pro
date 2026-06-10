@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import AuthProvider from "@/components/providers/AuthProvider";
+import NextTopLoader from "nextjs-toploader"; // NEW: Imports the seamless micro-loader
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ 
@@ -31,6 +32,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${jakarta.variable} ${mono.variable}`}>
       <body className="antialiased bg-background text-foreground">
+        <NextTopLoader 
+          color="#18181b"
+          initialPosition={0.08} 
+          crawlSpeed={200} 
+          height={3} 
+          crawl={true} 
+          showSpinner={false} 
+          easing="ease" 
+          speed={200} 
+        />
         <AuthProvider>
           {children}
         </AuthProvider>

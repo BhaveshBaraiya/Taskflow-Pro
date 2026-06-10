@@ -4,8 +4,9 @@ import { connectDB } from "@/lib/db";
 import Message from "@/models/Message";
 import Conversation from "@/models/Conversation";
 import User from "@/models/User";
-import { auth } from "@/auth";
+import Workspace from "@/models/Workspace";
 import Project from "@/models/Project";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pusherServer } from "@/lib/pusher-server";
@@ -29,11 +30,25 @@ export async function getInboxData() {
 export async function getMessages(chatId: string, type: "project" | "dm") {
   const session = await auth();
   if (!session?.user?.id) return [];
+  
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return [];
+
+  // Enforce workspace-level isolation check
+  if (type === "project") {
+    const project = await Project.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    if (!project) throw new Error("Unauthorized access to this project workspace.");
+  } else {
+    const conversation = await Conversation.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    if (!conversation) throw new Error("Unauthorized access to this conversation workspace.");
+  }
+
   const query = type === "project" ? { projectId: chatId } : { conversationId: chatId };
   const messages = await Message.find(query)
     .populate("senderId", "name email avatarUrl")
     .sort({ createdAt: 1 });
+    
   return JSON.parse(JSON.stringify(messages));
 }
 
@@ -52,9 +67,17 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
   if ((!text || text.trim() === "") && attachments.length === 0) return;
 
   await connectDB();
-
   const user = await User.findById(session.user.id);
   if (!user || !user.activeWorkspace) throw new Error("No active workspace found");
+
+  // Verify target belongs to the active workspace before writing data
+  if (type === "project") {
+    const project = await Project.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    if (!project) throw new Error("Project mismatch with active workspace");
+  } else {
+    const conversation = await Conversation.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    if (!conversation) throw new Error("Conversation mismatch with active workspace");
+  }
 
   const messageData: any = { 
     text, 
@@ -74,14 +97,12 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
   
   const leanMessage = {
     _id: populatedMessage._id.toString(),
-    text: populatedMessage.text ? populatedMessage.text.substring(0, 3000) : "",
+    text: populatedMessage.text ? populatedMessage.text.substring(0, 3000) : "",    
     senderId: {
       _id: populatedMessage.senderId._id.toString(),
       name: populatedMessage.senderId.name,
       email: populatedMessage.senderId.email,
-      avatarUrl: populatedMessage.senderId.avatarUrl?.startsWith("http") 
-        ? populatedMessage.senderId.avatarUrl 
-        : null,
+      avatarUrl: populatedMessage.senderId.avatarUrl || null,
     },
     createdAt: populatedMessage.createdAt,
     attachments: populatedMessage.attachments?.map((attachment: any) => ({
@@ -120,16 +141,26 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
 
 export async function searchUsers(query: string) {
   const session = await auth();
-  if (!session?.user?.id) return [];
-  if (!query || query.length < 2) return [];
+  if (!session?.user?.id || !query || query.length < 2) return [];
+
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return [];
+
+  const workspace = await Workspace.findById(user.activeWorkspace).select("members");
+  if (!workspace) return [];
+
+  // Escapes special characters so names like "Saif (Dev)" don't crash the search
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const users = await User.find({
-    _id: { $ne: session.user.id },
+    _id: { $in: workspace.members, $ne: session.user.id },
     $or: [
-      { name: { $regex: query, $options: "i" } },
-      { email: { $regex: query, $options: "i" } }
+      { name: { $regex: safeQuery, $options: "i" } },
+      { email: { $regex: safeQuery, $options: "i" } }
     ]
-  }).select("name email avatarUrl").limit(5);
+  }).select("name email avatarUrl jobTitle").limit(5);
+
   return JSON.parse(JSON.stringify(users));
 }
 
@@ -138,9 +169,14 @@ export async function createConversation(userIds: string[], isGroup: boolean, na
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   await connectDB();
-  
   const user = await User.findById(session.user.id);
   if (!user || !user.activeWorkspace) throw new Error("No active workspace found");
+
+  // Confirm target participants are actually workspace members
+  const workspace = await Workspace.findById(user.activeWorkspace).select("members");
+  const workspaceMemberIds = workspace?.members.map(m => m.toString()) || [];
+  const validParticipants = userIds.every(id => workspaceMemberIds.includes(id));
+  if (!validParticipants) throw new Error("Vulnerability Blocked: Cannot message users outside your active workspace.");
 
   if (!isGroup && userIds.length === 1) {
     const existingConv = await Conversation.findOne({
@@ -155,7 +191,6 @@ export async function createConversation(userIds: string[], isGroup: boolean, na
   }
 
   const participants = [session.user.id, ...userIds];
-  
   const newConv = await Conversation.create({
     isGroup,
     name: isGroup ? name : undefined,

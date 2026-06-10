@@ -74,6 +74,7 @@ export default function ProjectChat({
   chatId, 
   chatType,
   chatTitle,
+  chatAvatarUrl, // ADDED: Destructured avatar url from route entry parameter fields
   isGroup,
   initialMessages, 
   currentUserId 
@@ -81,6 +82,7 @@ export default function ProjectChat({
   chatId: string; 
   chatType: "project" | "dm";
   chatTitle: string;
+  chatAvatarUrl?: string; // ADDED: Declared optional type definition layout map rule
   isGroup: boolean;
   initialMessages: MessageData[];
   currentUserId?: string;
@@ -101,8 +103,7 @@ export default function ProjectChat({
 
   useEffect(() => { setHasMounted(true); }, []);
 
- useEffect(() => {
-    // We no longer need to combine prev arrays because the component unmounts!
+  useEffect(() => {
     setMessages([...initialMessages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
   }, [initialMessages]);
 
@@ -170,7 +171,7 @@ export default function ProjectChat({
     const formattedName = userName.split(" ")[0]; 
     const newTextBefore = words.length > 0 ? words.join(" ") + ` @${formattedName} ` : `@${formattedName} `;
 
-    setText(newTextBefore + textAfterCursor);
+  	setText(newTextBefore + textAfterCursor);
     setShowMentions(false);
     textInputRef.current?.focus();
   };
@@ -253,11 +254,21 @@ export default function ProjectChat({
         </div>
       )}
 
+      {/* --- CHAT HEADER SECTION --- */}
       <div className="border-b border-zinc-100 bg-white p-4 flex items-center justify-between shrink-0 shadow-sm z-10 relative">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-zinc-50 rounded-full flex items-center justify-center border border-zinc-200 shrink-0">
-            {isGroup || chatType === "project" ? <Hash className="h-5 w-5 text-zinc-600" /> : <CircleUser className="h-5 w-5 text-zinc-600" />}
-          </div>
+          {/* FIXED: Replaced standard CircleUser vector with workspace user profile configuration avatars */}
+          {isGroup || chatType === "project" ? (
+            <div className="h-10 w-10 bg-zinc-50 rounded-full flex items-center justify-center border border-zinc-200 shrink-0">
+              <Hash className="h-5 w-5 text-zinc-600" />
+            </div>
+          ) : (
+            <UserAvatar 
+              user={{ name: chatTitle, avatarUrl: chatAvatarUrl }} 
+              className="h-10 w-10 shrink-0 border border-zinc-200 shadow-sm" 
+            />
+          )}
+          
           <div>
             <h3 className="font-extrabold text-zinc-900 text-base tracking-tight line-clamp-1">{chatTitle}</h3>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
@@ -361,7 +372,6 @@ export default function ProjectChat({
         )}
 
         <form onSubmit={handleSend} className="relative flex items-end gap-2">
-          
           {showMentions && (
             <div className="absolute bottom-full left-12 mb-2 w-64 bg-white border border-zinc-200 rounded-xl shadow-xl z-50 overflow-hidden">
               <div className="p-2 bg-zinc-50 border-b border-zinc-100 text-xs font-bold text-zinc-500 uppercase tracking-wider">

@@ -28,6 +28,7 @@ export default async function InboxPage({
 
   let messages = [];
   let activeTitle = "";
+  let activeAvatarUrl = ""; // ADDED: Tracks the avatar URL of the active companion
   let isGroup = false;
 
   if (activeId) {
@@ -45,6 +46,7 @@ export default async function InboxPage({
         } else {
           const otherUser = conv.participants.find((p: any) => p._id !== currentUserId);
           activeTitle = otherUser?.name || "Unknown User";
+          activeAvatarUrl = otherUser?.avatarUrl || ""; // FIXED: Extract avatarUrl from the companion context
         }
       }
     }
@@ -105,7 +107,16 @@ export default async function InboxPage({
             <div className="md:hidden border-b border-zinc-100 bg-white p-3">
               <Link href="/dashboard/inbox" className="flex items-center gap-2 text-sm font-bold text-zinc-600"><ArrowLeft className="h-4 w-4" /> Back</Link>
             </div>
-            <ProjectChat key={activeId} chatId={activeId} chatType={activeType} chatTitle={activeTitle} isGroup={isGroup} initialMessages={messages} currentUserId={currentUserId} />
+            <ProjectChat 
+              key={activeId} 
+              chatId={activeId} 
+              chatType={activeType} 
+              chatTitle={activeTitle} 
+              chatAvatarUrl={activeAvatarUrl} 
+              isGroup={isGroup} 
+              initialMessages={messages} 
+              currentUserId={currentUserId} 
+            />
           </div>
         )}
       </div>

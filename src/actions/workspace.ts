@@ -85,6 +85,14 @@ export async function switchActiveWorkspace(workspaceId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user) throw new Error("User not found");
+
+  const isMember = user.workspaces.some(id => id.toString() === workspaceId);
+  if (!isMember) {
+    throw new Error("Vulnerability Blocked: You do not have access to this workspace.");
+  }
+
   await User.findByIdAndUpdate(session.user.id, {
     $set: { activeWorkspace: workspaceId }
   });

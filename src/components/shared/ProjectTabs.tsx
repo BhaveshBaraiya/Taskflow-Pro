@@ -31,6 +31,7 @@ export default function ProjectTabs({
   
   const [tabsList, setTabsList] = useState<TabData[]>(initialTabs);
   const [activeTab, setActiveTab] = useState(initialTabs[0].id);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null); // NEW: Tracks which tab is being renamed
   const [isAddingTab, setIsAddingTab] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -119,6 +120,7 @@ export default function ProjectTabs({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       
+      {/* --- TAB HEADERS ROW --- */}
       <div className="flex items-center justify-between border-b border-zinc-200 shrink-0 w-full bg-transparent overflow-x-auto no-scrollbar">
         
         <div className="flex-1 flex w-full">
@@ -130,7 +132,15 @@ export default function ProjectTabs({
               onDragEnd={handleDragEnd}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, tab.id)}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                // NEW: Click to switch, click again to edit
+                if (activeTab === tab.id) {
+                  setEditingTabId(tab.id);
+                } else {
+                  setActiveTab(tab.id);
+                  setEditingTabId(null);
+                }
+              }}
               className={`group relative flex items-center shrink-0 cursor-grab active:cursor-grabbing border-b-2 px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-bold transition-all ${
                 activeTab === tab.id 
                   ? "border-zinc-900 text-zinc-900 bg-white" 
@@ -139,7 +149,20 @@ export default function ProjectTabs({
             >
               <GripHorizontal className="h-3 w-3 mr-2 opacity-0 group-hover:opacity-100 transition-opacity absolute left-1 sm:left-2 text-zinc-300 hidden sm:block" />
               {getIcon(tab.type)}
-              <span className="truncate max-w-[100px] sm:max-w-[200px]">{tab.title}</span>
+              
+              {/* NEW: Inline Editable Tab Title */}
+              {editingTabId === tab.id ? (
+                <input 
+                  value={tab.title}
+                  onChange={(e) => updateTabData(tab.id, { title: e.target.value })}
+                  onBlur={() => setEditingTabId(null)}
+                  onKeyDown={(e) => { if(e.key === 'Enter') setEditingTabId(null) }}
+                  autoFocus
+                  className="bg-transparent border-none p-0 m-0 focus:ring-0 font-bold text-zinc-900 w-[100px] sm:w-[150px] outline-none"
+                />
+              ) : (
+                <span className="truncate max-w-[100px] sm:max-w-[200px] cursor-text" title="Click again to rename">{tab.title}</span>
+              )}
               
               {tab.type === "doc" && (
                 <button 
@@ -153,6 +176,7 @@ export default function ProjectTabs({
           ))}
         </div>
 
+        {/* ADD TAB BUTTON */}
         <div className="shrink-0 pl-2 sm:pl-4 py-2 border-l border-zinc-200 bg-zinc-50/50 flex items-center sticky right-0">
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
@@ -175,15 +199,11 @@ export default function ProjectTabs({
         </div>
       </div>
 
+      {/* --- TAB CONTENT PANELS --- */}
       <div className="flex-1 flex flex-col pt-4 sm:pt-6 m-0 overflow-hidden">
         {currentTab?.type === "tasks" && (
           <>
             <div className="flex flex-col gap-2 mb-4 sm:mb-6 shrink-0">
-              <Input 
-                value={currentTab.title} 
-                onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
-              />
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-4">
                 <Input 
                   value={currentTab.description || ""}
@@ -208,11 +228,6 @@ export default function ProjectTabs({
           <div className="max-w-4xl h-full flex flex-col space-y-3 sm:space-y-4 overflow-y-auto pb-6">
             <div className="flex flex-col gap-1 shrink-0">
               <Input 
-                value={currentTab.title} 
-                onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
-              />
-              <Input 
                 value={currentTab.description || ""}
                 onChange={(e) => updateTabData(currentTab.id, { description: e.target.value })}
                 placeholder="Securely document credentials..."
@@ -233,11 +248,6 @@ export default function ProjectTabs({
         {(currentTab?.type === "notes" || currentTab?.type === "doc") && (
           <div className="max-w-4xl h-full flex flex-col space-y-3 sm:space-y-4 overflow-y-auto pb-6">
             <div className="flex flex-col gap-1 shrink-0">
-              <Input 
-                value={currentTab.title} 
-                onChange={(e) => updateTabData(currentTab.id, { title: e.target.value })}
-                className="text-xl sm:text-2xl font-black text-zinc-900 p-0 border-none h-auto focus-visible:ring-0 shadow-none bg-transparent"
-              />
               <Input 
                 value={currentTab.description || ""}
                 onChange={(e) => updateTabData(currentTab.id, { description: e.target.value })}

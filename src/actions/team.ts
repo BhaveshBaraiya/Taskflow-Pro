@@ -17,8 +17,10 @@ export async function inviteUserToProject(projectId: string, formData: FormData)
   if (!email) throw new Error("Email is required.");
 
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) throw new Error("Working session context error");
 
-  const project = await Project.findOne({ _id: projectId, ownerId: session.user.id });
+  const project = await Project.findOne({ _id: projectId, ownerId: session.user.id, workspaceId: user.activeWorkspace });
   if (!project) throw new Error("Only the project owner can invite members.");
 
   const userToInvite = await User.findOne({ email: email.toLowerCase() });
@@ -31,11 +33,15 @@ export async function inviteUserToProject(projectId: string, formData: FormData)
     throw new Error("You cannot invite yourself.");
   }
 
-  // Add user to project
+  // 1. Add user to project channel array
   project.members.push(userToInvite._id);
   await project.save();
 
-  // Create Notification
+  // FIX: Simultaneously ensure they exist inside the parent Workspace member group 
+  // so they are discoverable across matching directories and can change active states
+  await Workspace.findByIdAndUpdate(project.workspaceId, { $addToSet: { members: userToInvite._id } });
+  await User.findByIdAndUpdate(userToInvite._id, { $addToSet: { workspaces: project.workspaceId } });
+
   const notif = await Notification.create({
     recipientId: userToInvite._id,
     title: "Added to Project",
@@ -44,7 +50,6 @@ export async function inviteUserToProject(projectId: string, formData: FormData)
     workspaceId: project.workspaceId
   });
 
-  // Trigger Real-time Pusher Event
   await pusherServer.trigger(`user-${userToInvite._id}`, "new-notification", {
     title: notif.title,
     message: notif.message,
@@ -56,25 +61,33 @@ export async function inviteUserToProject(projectId: string, formData: FormData)
 }
 
 export async function getProjectMembers(projectId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
   await connectDB();
-  const project = await Project.findById(projectId).populate("members", "name email avatarUrl");
-  
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return [];
+
+  const project = await Project.findOne({ _id: projectId, workspaceId: user.activeWorkspace }).populate("members", "name email avatarUrl");
   if (!project) return [];
+  
   return JSON.parse(JSON.stringify(project.members));
 }
 
 export async function getAllWorkspaceMembers(projectId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
   await connectDB();
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) return [];
   
-  // 1. Find the project to see what workspace it belongs to
-  const project = await Project.findById(projectId);
+  const project = await Project.findOne({ _id: projectId, workspaceId: user.activeWorkspace });
   if (!project) return [];
 
-  // 2. Find the workspace
-  const workspace = await Workspace.findById(project.workspaceId);
+  const workspace = await Workspace.findOne({ _id: project.workspaceId, members: session.user.id });
   if (!workspace) return [];
 
-  // 3. Find only the users whose IDs are inside the workspace.members array
   const users = await User.find({
     _id: { $in: workspace.members }
   }).select("_id name email avatarUrl");
@@ -82,23 +95,22 @@ export async function getAllWorkspaceMembers(projectId: string) {
   return JSON.parse(JSON.stringify(users));
 }
 
-// Automatically adds/removes the user to the Workspace and sends notifications
 export async function toggleProjectMember(projectId: string, userId: string, action: 'add' | 'remove') {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
   await connectDB();
-  const project = await Project.findById(projectId);
-  if (!project) return;
+  const user = await User.findById(session.user.id);
+  if (!user || !user.activeWorkspace) throw new Error("Missing active workspace identifier verification process metadata rules context exception");
+
+  const project = await Project.findOne({ _id: projectId, workspaceId: user.activeWorkspace });
+  if (!project) throw new Error("Unauthorized project scope access mutation processing rule block trigger");
 
   if (action === 'add') {
-    // 1. Add to Project
     await Project.findByIdAndUpdate(projectId, { $addToSet: { members: userId } });
-    
-    // 2. Add to Workspace so they have global access
     await Workspace.findByIdAndUpdate(project.workspaceId, { $addToSet: { members: userId } });
-    
-    // 3. Ensure the workspace is added to the User's document
     await User.findByIdAndUpdate(userId, { $addToSet: { workspaces: project.workspaceId } });
 
-    // 4. Send Notification
     const notif = await Notification.create({
       recipientId: userId,
       title: "Added to Project",
@@ -114,10 +126,8 @@ export async function toggleProjectMember(projectId: string, userId: string, act
     });
 
   } else {
-    // 1. Remove from project (they stay in the workspace)
     await Project.findByIdAndUpdate(projectId, { $pull: { members: userId } });
 
-    // 2. Send Notification
     const notif = await Notification.create({
       recipientId: userId,
       title: "Removed from Project",
