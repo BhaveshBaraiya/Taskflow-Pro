@@ -88,7 +88,7 @@ export async function switchActiveWorkspace(workspaceId: string) {
   const user = await User.findById(session.user.id);
   if (!user) throw new Error("User not found");
 
-  const isMember = user.workspaces.some(id => id.toString() === workspaceId);
+  const isMember = user.workspaces.some((id: any) => id.toString() === workspaceId);
   if (!isMember) {
     throw new Error("Vulnerability Blocked: You do not have access to this workspace.");
   }

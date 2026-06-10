@@ -174,7 +174,7 @@ export async function createConversation(userIds: string[], isGroup: boolean, na
 
   // Confirm target participants are actually workspace members
   const workspace = await Workspace.findById(user.activeWorkspace).select("members");
-  const workspaceMemberIds = workspace?.members.map(m => m.toString()) || [];
+  const workspaceMemberIds = workspace?.members.map((m: any) => m.toString()) || [];
   const validParticipants = userIds.every(id => workspaceMemberIds.includes(id));
   if (!validParticipants) throw new Error("Vulnerability Blocked: Cannot message users outside your active workspace.");
 
