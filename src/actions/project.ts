@@ -241,3 +241,18 @@ export async function saveProjectDocs(projectId: string, content: string) {
 
   return { success: true };
 }
+
+export async function updateProjectColumns(projectId: string, columns: any[]) {
+  await connectDB();
+  const project = await Project.findByIdAndUpdate(
+    projectId,
+    { $set: { columns } },
+    { new: true }
+  );
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  return JSON.parse(JSON.stringify(project));
+}

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation"; // <-- NEW IMPORTS
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { updateTaskStatus } from "@/actions/task";
+import { updateProjectColumns } from "@/actions/project";
 import TaskCard from "@/components/shared/TaskCard";
 import TaskDetailModal from "@/components/shared/TaskDetailModal";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function KanbanBoard({ 
   initialTasks, 
@@ -34,7 +36,6 @@ export default function KanbanBoard({
 
   useEffect(() => {
     setTasks(initialTasks);
-    // If the URL has a taskId, auto-open that task
     if (urlTaskId && initialTasks.length > 0) {
       const taskToOpen = initialTasks.find(t => t._id === urlTaskId);
       if (taskToOpen) {
@@ -49,14 +50,12 @@ export default function KanbanBoard({
 
   const handleCloseModal = () => {
     setSelectedTask(null);
-    // Remove the ?taskId= from the URL so it doesn't reopen on refresh
     if (urlTaskId) {
       router.replace(pathname, { scroll: false }); 
     }
   };
-  // -------------------------------
 
-  const handleAddColumn = () => {
+  const handleAddColumn = async () => {
     if (!newColumnTitle.trim()) {
       setIsAddingColumn(false);
       return;
@@ -69,9 +68,46 @@ export default function KanbanBoard({
       dotClass: "bg-zinc-400"
     };
     
-    setColumns([...columns, newCol]);
+    const newColumns = [...columns, newCol];
+    setColumns(newColumns);
     setNewColumnTitle("");
     setIsAddingColumn(false);
+
+    try {
+      await updateProjectColumns(projectId, newColumns);
+    } catch (error) {
+      toast.error("Failed to save new phase.");
+    }
+  };
+
+  const handleDeleteColumn = async (columnId: string) => {
+    const hasTasks = tasks.some(t => t.status === columnId);
+    if (hasTasks) {
+      toast.error("Cannot delete a phase that contains tasks. Move or delete them first.");
+      return;
+    }
+
+    const newColumns = columns.filter((col) => col.id !== columnId);
+    setColumns(newColumns);
+
+    try {
+      await updateProjectColumns(projectId, newColumns);
+      toast.success("Phase deleted successfully.");
+    } catch (error) {
+      toast.error("Failed to delete phase.");
+    }
+  };
+
+  const handleTitleChange = (columnId: string, newTitle: string) => {
+    setColumns(columns.map(col => col.id === columnId ? { ...col, title: newTitle } : col));
+  };
+
+  const saveColumnTitle = async () => {
+    try {
+      await updateProjectColumns(projectId, columns);
+    } catch (error) {
+      toast.error("Failed to save phase name.");
+    }
   };
 
   const onDragEnd = async (result: any) => {
@@ -85,6 +121,12 @@ export default function KanbanBoard({
       const [movedColumn] = newColumns.splice(source.index, 1);
       newColumns.splice(destination.index, 0, movedColumn);
       setColumns(newColumns);
+      
+      try {
+        await updateProjectColumns(projectId, newColumns);
+      } catch (error) {
+        toast.error("Failed to save phase order.");
+      }
       return;
     }
 
@@ -121,19 +163,41 @@ export default function KanbanBoard({
                     style={{
                     ...provided.draggableProps.style,
                   } as any}
-                    className={`flex flex-col w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2" : ""}`}
+                    className={`flex flex-col w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2 z-50" : ""}`}
                   >
                     <div 
                       {...provided.dragHandleProps}
-                      className="flex items-center justify-between mb-4 cursor-grab active:cursor-grabbing"
+                      className="flex items-center justify-between mb-4 cursor-grab active:cursor-grabbing group"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2.5 w-2.5 rounded-full ${column.dotClass}`} />
-                        <h3 className="font-extrabold text-sm text-zinc-900 uppercase tracking-wider">{column.title}</h3>
+                      <div className="flex items-center gap-2 flex-1 mr-2 min-w-0">
+                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${column.dotClass}`} />
+                        {/* Inline Editable Input */}
+                        <input 
+                          value={column.title}
+                          onChange={(e) => handleTitleChange(column.id, e.target.value)}
+                          onBlur={saveColumnTitle}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="font-extrabold text-sm text-zinc-900 uppercase tracking-wider bg-transparent border-transparent hover:bg-zinc-200/50 focus:bg-white focus:ring-2 focus:ring-zinc-900 rounded px-1.5 py-0.5 w-full transition-all outline-none truncate cursor-text"
+                          title="Click to edit name"
+                        />
                       </div>
-                      <span className="text-xs font-bold text-zinc-400">
-                        {tasks.filter((t) => t.status === column.id).length}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold text-zinc-400 px-1">
+                          {tasks.filter((t) => t.status === column.id).length}
+                        </span>
+                        <button 
+                          onClick={() => handleDeleteColumn(column.id)}
+                          onPointerDown={(e) => e.stopPropagation()} 
+                          className="text-zinc-300 hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                          title="Delete Phase"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <Droppable droppableId={column.id} type="task">
@@ -184,8 +248,8 @@ export default function KanbanBoard({
                     }}
                   />
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setIsAddingColumn(false)} className="h-8 text-xs">Cancel</Button>
-                    <Button size="sm" onClick={handleAddColumn} className="h-8 text-xs bg-zinc-900 text-white">Add</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIsAddingColumn(false)} className="h-8 text-xs font-bold text-zinc-500">Cancel</Button>
+                    <Button size="sm" onClick={handleAddColumn} className="h-8 text-xs bg-zinc-900 text-white font-bold">Add Phase</Button>
                   </div>
                 </div>
               ) : (
@@ -204,14 +268,13 @@ export default function KanbanBoard({
     </DragDropContext>
 
     <TaskDetailModal 
-  task={selectedTask} 
-  projectId={projectId}
-  members={members}
-  isOpen={!!selectedTask} 
-  onClose={() => setSelectedTask(null)}
-  onUpdate={(data) => setTasks(tasks.map(t => t._id === selectedTask._id ? {...t, ...data} : t))}
-/>
-
+      task={selectedTask} 
+      projectId={projectId}
+      members={members}
+      isOpen={!!selectedTask} 
+      onClose={handleCloseModal}
+      onUpdate={(data) => setTasks(tasks.map(t => t._id === selectedTask._id ? {...t, ...data} : t))}
+    />
     </>
   );
 }

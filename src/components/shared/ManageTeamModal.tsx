@@ -86,7 +86,7 @@ export default function ManageTeamModal({ projectId, members = [], allWorkspaceM
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-zinc-400" />
               <Input 
-                placeholder="Search all registered users..." 
+                placeholder="Search workspace members..." 
                 className="pl-9 h-9 sm:h-10 text-xs sm:text-sm bg-zinc-50 border-zinc-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-zinc-900 transition-all"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

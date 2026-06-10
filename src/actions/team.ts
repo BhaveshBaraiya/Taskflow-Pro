@@ -63,12 +63,23 @@ export async function getProjectMembers(projectId: string) {
   return JSON.parse(JSON.stringify(project.members));
 }
 
-// Fetches ALL registered users on the platform so you can find new users
 export async function getAllWorkspaceMembers(projectId: string) {
   await connectDB();
-  // Fetch every registered user in the database
-  const allUsers = await User.find({}).select("_id name email avatarUrl");
-  return JSON.parse(JSON.stringify(allUsers));
+  
+  // 1. Find the project to see what workspace it belongs to
+  const project = await Project.findById(projectId);
+  if (!project) return [];
+
+  // 2. Find the workspace
+  const workspace = await Workspace.findById(project.workspaceId);
+  if (!workspace) return [];
+
+  // 3. Find only the users whose IDs are inside the workspace.members array
+  const users = await User.find({
+    _id: { $in: workspace.members }
+  }).select("_id name email avatarUrl");
+
+  return JSON.parse(JSON.stringify(users));
 }
 
 // Automatically adds/removes the user to the Workspace and sends notifications
