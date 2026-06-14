@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, LayoutDashboard } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Hexagon } from "lucide-react"; // Added Hexagon import
 
 export default function Home() {
   return (
@@ -14,9 +14,12 @@ export default function Home() {
           System Online
         </div>
         
-        {/* Main Heading */}
-        <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
-          TaskFlow <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-600">Pro</span>
+        {/* Main Heading - Added flex and the Hexagon icon */}
+        <h1 className="flex items-center justify-center gap-4 text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
+          <Hexagon className="h-12 w-12 md:h-20 md:w-20 fill-white text-white shrink-0" />
+          <span>
+            TaskFlow <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-600">Pro</span>
+          </span>
         </h1>
         
         {/* Subtitle */}
