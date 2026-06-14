@@ -148,9 +148,7 @@ export default function ProjectTabs({
               }`}
             >
               <GripHorizontal className="h-3 w-3 mr-2 opacity-0 group-hover:opacity-100 transition-opacity absolute left-1 sm:left-2 text-zinc-300 hidden sm:block" />
-              {getIcon(tab.type)}
-              
-              {/* NEW: Inline Editable Tab Title */}
+              {getIcon(tab.type)}                          
               {editingTabId === tab.id ? (
                 <input 
                   value={tab.title}

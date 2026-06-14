@@ -1,9 +1,9 @@
 import { getProjects } from "@/actions/project";
-import { getInboxData, getMessages } from "@/actions/chat";
+import { getInboxData } from "@/actions/chat"; // Removed getMessages from here
 import ProjectChat from "@/components/shared/ProjectChat";
 import { auth } from "@/auth";
 import Link from "next/link";
-import { MessageSquare, Hash, Users, CircleUser, ArrowLeft } from "lucide-react";
+import { MessageSquare, Hash, ArrowLeft } from "lucide-react";
 import CreateChatModal from "@/components/shared/CreateChatModal";
 import SidebarSearch from "@/components/shared/SidebarSearch";
 import UserAvatar from "@/components/shared/UserAvatar";
@@ -26,14 +26,11 @@ export default async function InboxPage({
   
   const activeId = resolvedParams.id || null;
 
-  let messages = [];
   let activeTitle = "";
-  let activeAvatarUrl = ""; // ADDED: Tracks the avatar URL of the active companion
+  let activeAvatarUrl = ""; 
   let isGroup = false;
 
   if (activeId) {
-    messages = await getMessages(activeId, activeType);
-    
     if (activeType === "project") {
       activeTitle = projects.find((p: any) => p._id === activeId)?.title || "Project Channel";
       isGroup = true;
@@ -46,7 +43,7 @@ export default async function InboxPage({
         } else {
           const otherUser = conv.participants.find((p: any) => p._id !== currentUserId);
           activeTitle = otherUser?.name || "Unknown User";
-          activeAvatarUrl = otherUser?.avatarUrl || ""; // FIXED: Extract avatarUrl from the companion context
+          activeAvatarUrl = otherUser?.avatarUrl || ""; 
         }
       }
     }
@@ -107,6 +104,7 @@ export default async function InboxPage({
             <div className="md:hidden border-b border-zinc-100 bg-white p-3">
               <Link href="/dashboard/inbox" className="flex items-center gap-2 text-sm font-bold text-zinc-600"><ArrowLeft className="h-4 w-4" /> Back</Link>
             </div>
+            {/* Notice initialMessages is gone here */}
             <ProjectChat 
               key={activeId} 
               chatId={activeId} 
@@ -114,7 +112,6 @@ export default async function InboxPage({
               chatTitle={activeTitle} 
               chatAvatarUrl={activeAvatarUrl} 
               isGroup={isGroup} 
-              initialMessages={messages} 
               currentUserId={currentUserId} 
             />
           </div>

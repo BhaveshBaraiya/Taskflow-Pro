@@ -15,8 +15,7 @@ export default async function MyTasksPage() {
   if (!session?.user?.id) redirect("/login");
 
   const tasks = await getMyTasks();
-
-  // Separate tasks into active and completed
+  
   const activeTasks = tasks.filter((t: any) => t.status !== "done" && t.status !== "completed");
   const completedTasks = tasks.filter((t: any) => t.status === "done" || t.status === "completed");
 

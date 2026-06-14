@@ -16,6 +16,20 @@ const messageSchema = new Schema(
   { timestamps: true }
 );
 
+messageSchema.index({
+  conversationId: 1,
+  createdAt: -1
+});
+
+messageSchema.index({
+  projectId: 1,
+  createdAt: -1
+});
+
+messageSchema.index({
+  workspaceId: 1
+});
+
 const Message = models.Message || mongoose.model("Message", messageSchema);
 
 export default Message;

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { sendMessage, searchUsers, createConversation } from "@/actions/chat";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Virtuoso } from "react-virtuoso";
+import { sendMessage, searchUsers, createConversation, getMessages } from "@/actions/chat";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, Hash, CircleUser, X, FileIcon, ImageIcon, Download, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Send, Paperclip, Hash, X, FileIcon, ImageIcon, Download, ChevronLeft, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { pusherClient } from "@/lib/pusher-client";
 import { uploadFiles } from "@/utils/uploadthing";
@@ -74,22 +76,20 @@ export default function ProjectChat({
   chatId, 
   chatType,
   chatTitle,
-  chatAvatarUrl, // ADDED: Destructured avatar url from route entry parameter fields
+  chatAvatarUrl, 
   isGroup,
-  initialMessages, 
   currentUserId 
 }: { 
   chatId: string; 
   chatType: "project" | "dm";
   chatTitle: string;
-  chatAvatarUrl?: string; // ADDED: Declared optional type definition layout map rule
+  chatAvatarUrl?: string; 
   isGroup: boolean;
-  initialMessages: MessageData[];
   currentUserId?: string;
 }) {
+  const queryClient = useQueryClient();
   const [isSending, setIsSending] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [hasMounted, setHasMounted] = useState(false);
   const [lightbox, setLightbox] = useState<{ images: Attachment[], index: number } | null>(null);
   
@@ -97,27 +97,33 @@ export default function ProjectChat({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionResults, setMentionResults] = useState<UserResult[]>([]);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setHasMounted(true); }, []);
 
-  useEffect(() => {
-    setMessages([...initialMessages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-  }, [initialMessages]);
+  // 🔥 1. TANSTACK QUERY: Handles instant fetching, caching, and background sync
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: ["chat", chatId],
+    queryFn: async () => {
+      const data = await getMessages(chatId, chatType);
+      return [...data].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    },
+  });
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
+  // 🔥 2. PUSHER UPDATES: Injects new messages seamlessly into the local cache
   useEffect(() => {
     if (!pusherClient) return;
     const channel = pusherClient.subscribe(chatId);
+    
     const handleNewMessage = (newMessage: MessageData) => {
-      setMessages((prev) => {
-        if (prev.some((msg) => msg._id === newMessage._id)) return prev;
-        return [...prev, newMessage];
+      queryClient.setQueryData<MessageData[]>(["chat", chatId], (oldMessages) => {
+        if (!oldMessages) return [newMessage];
+        if (oldMessages.some((msg) => msg._id === newMessage._id)) return oldMessages;
+        return [...oldMessages, newMessage];
       });
     };
+    
     channel.bind("new-message", handleNewMessage);
     return () => {
       if (pusherClient) {
@@ -125,7 +131,7 @@ export default function ProjectChat({
         pusherClient.unsubscribe(chatId);
       }
     };
-  }, [chatId]);
+  }, [chatId, queryClient]);
 
   const handleMentionClick = async (name: string) => {
     try {
@@ -171,7 +177,7 @@ export default function ProjectChat({
     const formattedName = userName.split(" ")[0]; 
     const newTextBefore = words.length > 0 ? words.join(" ") + ` @${formattedName} ` : `@${formattedName} `;
 
-  	setText(newTextBefore + textAfterCursor);
+    setText(newTextBefore + textAfterCursor);
     setShowMentions(false);
     textInputRef.current?.focus();
   };
@@ -257,7 +263,6 @@ export default function ProjectChat({
       {/* --- CHAT HEADER SECTION --- */}
       <div className="border-b border-zinc-100 bg-white p-4 flex items-center justify-between shrink-0 shadow-sm z-10 relative">
         <div className="flex items-center gap-3">
-          {/* FIXED: Replaced standard CircleUser vector with workspace user profile configuration avatars */}
           {isGroup || chatType === "project" ? (
             <div className="h-10 w-10 bg-zinc-50 rounded-full flex items-center justify-center border border-zinc-200 shrink-0">
               <Hash className="h-5 w-5 text-zinc-600" />
@@ -278,90 +283,106 @@ export default function ProjectChat({
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-zinc-50/30 custom-scrollbar">
-        {messages.length === 0 ? (
+      {/* 🔥 3. VIRTUALIZATION & LOADING STATE */}
+      <div className="flex-1 bg-zinc-50/30 relative">
+        {isLoading && messages.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50/50 backdrop-blur-sm z-10">
+            <Loader2 className="h-8 w-8 text-blue-600 animate-spin mb-4" />
+            <p className="text-sm font-bold text-zinc-500 tracking-wide">Loading chat history...</p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-400">
             <div className="h-12 w-12 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center mb-4 shadow-sm"><Hash className="h-6 w-6 text-zinc-300" /></div>
             <p className="text-sm font-bold text-zinc-900">Beginning of conversation</p>
             <p className="text-xs font-medium mt-1">Send a message to start chatting.</p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isMe = msg.senderId._id === currentUserId;
-            const images = msg.attachments?.filter(a => a.fileType && a.fileType.startsWith("image/")) || [];
-            const documents = msg.attachments?.filter(a => a.fileType && !a.fileType.startsWith("image/")) || [];
+          <Virtuoso
+            data={messages}
+            initialTopMostItemIndex={messages.length - 1} // Starts at the bottom of the chat
+            followOutput="smooth" // Auto-scrolls smoothly when new messages arrive
+            className="h-full w-full custom-scrollbar"
+            itemContent={(index, msg) => {
+              const isMe = msg.senderId._id === currentUserId;
+              
+              // ADDED EXPLICIT TYPES HERE
+              const images = msg.attachments?.filter((a: Attachment) => a.fileType && a.fileType.startsWith("image/")) || [];
+              const documents = msg.attachments?.filter((a: Attachment) => a.fileType && !a.fileType.startsWith("image/")) || [];
 
-            return (
-              <div key={msg._id} className={`flex gap-4 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-                <UserAvatar 
-                  user={{ 
-                    name: msg.senderId.name, 
-                    avatarUrl: msg.senderId.avatarUrl 
-                  }} 
-                  className="h-8 w-8 shrink-0 mt-1 shadow-sm border border-zinc-100"
-                />
-                <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[75%]`}>
-                  <div className="flex items-center gap-2 mb-1.5 px-1">
-                    <span className="text-xs font-bold text-zinc-900">{isMe ? "You" : msg.senderId.name}</span>
-                    <span className="text-[10px] font-medium text-zinc-400">
-                      {hasMounted ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                    </span>
-                  </div>
-                  
-                  {images.length > 0 && (
-                    <div className={`grid gap-1.5 max-w-sm mb-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                      {images.slice(0, 4).map((img, idx) => {
-                        const isLast = idx === 3 && images.length > 4;
-                        return (
-                          <div key={idx} onClick={() => setLightbox({ images, index: idx })} className={`relative cursor-pointer overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 ${images.length === 1 ? 'max-h-72 aspect-auto' : 'aspect-square'}`}>
-                            <img src={img.url} alt="attachment" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                            {isLast && (
-                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-xl backdrop-blur-sm">
-                                +{images.length - 4}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+              return (
+                <div className={`flex gap-4 px-6 py-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                  <UserAvatar 
+                    user={{ 
+                      name: msg.senderId.name, 
+                      avatarUrl: msg.senderId.avatarUrl 
+                    }} 
+                    className="h-8 w-8 shrink-0 mt-1 shadow-sm border border-zinc-100"
+                  />
+                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[75%]`}>
+                    <div className="flex items-center gap-2 mb-1.5 px-1">
+                      <span className="text-xs font-bold text-zinc-900">{isMe ? "You" : msg.senderId.name}</span>
+                      <span className="text-[10px] font-medium text-zinc-400">
+                        {hasMounted ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                      </span>
                     </div>
-                  )}
-
-                  {documents.length > 0 && (
-                    <div className="space-y-2 mb-2">
-                      {documents.map((doc, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-1.5 bg-white border border-zinc-200 w-64 rounded-xl shadow-sm group">
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 overflow-hidden flex-1 hover:bg-zinc-50 p-1.5 rounded-lg transition-colors cursor-pointer">
-                            <div className="h-10 w-10 shrink-0 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100"><FileIcon className="h-5 w-5" /></div>
-                            <div className="flex flex-col min-w-0 test">
-                              <span className="text-xs font-bold text-zinc-900 truncate">{getFileName(doc.name)}</span>
-                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{doc.fileType.split('/')[1] || "DOCUMENT"}</span>
+                    
+                    {images.length > 0 && (
+                      <div className={`grid gap-1.5 max-w-sm mb-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {/* ADDED EXPLICIT TYPES HERE */}
+                        {images.slice(0, 4).map((img: Attachment, idx: number) => {
+                          const isLast = idx === 3 && images.length > 4;
+                          return (
+                            <div key={idx} onClick={() => setLightbox({ images, index: idx })} className={`relative cursor-pointer overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 ${images.length === 1 ? 'max-h-72 aspect-auto' : 'aspect-square'}`}>
+                              <img src={img.url} alt="attachment" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                              {isLast && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-xl backdrop-blur-sm">
+                                  +{images.length - 4}
+                                </div>
+                              )}
                             </div>
-                          </a>
-                          <button onClick={(e) => forceDownload(doc.url, doc.name, e)} className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-zinc-50 border border-zinc-200 hover:bg-blue-600 hover:border-blue-600 hover:text-white text-zinc-500 transition-all ml-1 z-10 cursor-pointer shadow-sm">
-                            <Download className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )}
 
-                  {msg.text && (
-                    <div className={`px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${isMe ? "bg-zinc-900 text-white rounded-2xl rounded-tr-sm" : "bg-white border border-zinc-200 text-zinc-800 rounded-2xl rounded-tl-sm"}`}>
-                      {formatMessageText(msg.text, handleMentionClick)}
-                    </div>
-                  )}
+                    {documents.length > 0 && (
+                      <div className="space-y-2 mb-2">
+                        {/* ADDED EXPLICIT TYPES HERE */}
+                        {documents.map((doc: Attachment, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between p-1.5 bg-white border border-zinc-200 w-64 rounded-xl shadow-sm group">
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 overflow-hidden flex-1 hover:bg-zinc-50 p-1.5 rounded-lg transition-colors cursor-pointer">
+                              <div className="h-10 w-10 shrink-0 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100"><FileIcon className="h-5 w-5" /></div>
+                              <div className="flex flex-col min-w-0 test">
+                                <span className="text-xs font-bold text-zinc-900 truncate">{getFileName(doc.name)}</span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{doc.fileType.split('/')[1] || "DOCUMENT"}</span>
+                              </div>
+                            </a>
+                            <button onClick={(e) => forceDownload(doc.url, doc.name, e)} className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-zinc-50 border border-zinc-200 hover:bg-blue-600 hover:border-blue-600 hover:text-white text-zinc-500 transition-all ml-1 z-10 cursor-pointer shadow-sm">
+                              <Download className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {msg.text && (
+                      <div className={`px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${isMe ? "bg-zinc-900 text-white rounded-2xl rounded-tr-sm" : "bg-white border border-zinc-200 text-zinc-800 rounded-2xl rounded-tl-sm"}`}>
+                        {formatMessageText(msg.text, handleMentionClick)}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            }}
+          />
         )}
-        <div ref={messagesEndRef} />
       </div>
       
       <div className="p-4 bg-white border-t border-zinc-100 flex flex-col shrink-0">
         {files.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
-            {files.map((f, idx) => (
+            {/* ADDED EXPLICIT TYPES HERE */}
+            {files.map((f: File, idx: number) => (
               <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1.5 rounded-lg shadow-sm max-w-xs">
                 {f.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 shrink-0" /> : <FileIcon className="h-4 w-4 shrink-0" />}
                 <span className="text-[11px] font-bold truncate">{f.name}</span>

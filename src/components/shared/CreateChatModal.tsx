@@ -69,8 +69,8 @@ export default function CreateChatModal() {
           <Plus className="h-4 w-4" />
         </button>
       </DialogTrigger>
-      {/* FIXED: Added max-h-[85vh] and flex-col to keep the modal inside the viewport when keyboard opens */}
-      <DialogContent className="sm:max-w-[450px] w-[95vw] max-h-[85vh] md:max-h-[90vh] bg-white border-zinc-200 p-0 shadow-2xl overflow-hidden rounded-2xl flex flex-col">
+      {/* FIXED: Changed to dvh so the container shrinks dynamically when the keyboard pops up */}
+      <DialogContent className="sm:max-w-[450px] w-[95vw] max-h-[85dvh] md:max-h-[90dvh] bg-white border-zinc-200 p-0 shadow-2xl overflow-hidden rounded-2xl flex flex-col">
         
         {/* Pinned Header */}
         <div className="p-4 sm:p-6 border-b border-zinc-100 bg-zinc-50/50 shrink-0">
@@ -81,7 +81,7 @@ export default function CreateChatModal() {
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">          
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0 pb-2">          
           {selectedUsers.length > 0 && (
             <div className="flex flex-wrap gap-2 shrink-0">
               {selectedUsers.map(user => (
@@ -151,7 +151,7 @@ export default function CreateChatModal() {
         </div>
 
         {/* Pinned Footer (Submit Button) */}
-        <div className="p-4 sm:p-6 border-t border-zinc-100 bg-white shrink-0">
+        <div className="p-4 sm:p-6 border-t border-zinc-100 bg-white shrink-0 pb-safe">
           <Button 
             onClick={handleCreate} 
             disabled={selectedUsers.length === 0 || isCreating || (selectedUsers.length > 1 && !groupName)} 

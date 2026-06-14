@@ -54,7 +54,8 @@ export default function ManageTeamModal({ projectId, members = [], allWorkspaceM
           Team ({members.length + 1})
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 border-zinc-200 bg-white shadow-xl rounded-2xl">
+      {/* Adjusted max-h from 90vh to 85dvh for keyboard support */}
+      <DialogContent className="w-[95vw] max-w-[425px] max-h-[85dvh] overflow-hidden flex flex-col p-4 sm:p-6 border-zinc-200 bg-white shadow-xl rounded-2xl">
         <DialogHeader className="shrink-0 text-left">
           <DialogTitle className="text-lg sm:text-xl font-extrabold text-zinc-900">Manage Workspace Team</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm font-medium text-zinc-500">
@@ -62,7 +63,8 @@ export default function ManageTeamModal({ projectId, members = [], allWorkspaceM
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 pr-1 -mr-1 mt-4 space-y-5 sm:space-y-6">
+        {/* This wrapper natively scrolls when squished by the keyboard */}
+        <div className="overflow-y-auto flex-1 pr-1 -mr-1 mt-4 space-y-5 sm:space-y-6 pb-2">
           <form id="invite-form" action={handleInvite} className="flex gap-2 shrink-0">
             <div className="relative flex-1">
               <Mail className="absolute left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-zinc-400" />

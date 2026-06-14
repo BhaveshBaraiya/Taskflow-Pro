@@ -22,7 +22,7 @@ export async function getInboxData() {
   const conversations = await Conversation.find({
     workspaceId: user.activeWorkspace,
     participants: session.user.id
-  }).populate("participants", "name email avatarUrl");
+  }).populate("participants", "name email avatarUrl").lean();
   
   return JSON.parse(JSON.stringify(conversations));
 }
@@ -47,7 +47,8 @@ export async function getMessages(chatId: string, type: "project" | "dm") {
   const query = type === "project" ? { projectId: chatId } : { conversationId: chatId };
   const messages = await Message.find(query)
     .populate("senderId", "name email avatarUrl")
-    .sort({ createdAt: 1 });
+    .sort({ createdAt: 1 })
+    .lean();
     
   return JSON.parse(JSON.stringify(messages));
 }
@@ -95,14 +96,19 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
   const newMessage = await Message.create(messageData);
   const populatedMessage = await Message.findById(newMessage._id).populate("senderId", "name email avatarUrl");
   
-  const leanMessage = {
+  // 2. Format a strictly smaller message for Pusher
+  const pusherMessage = {
     _id: populatedMessage._id.toString(),
-    text: populatedMessage.text ? populatedMessage.text.substring(0, 3000) : "",    
+    // Reduce substring to 1000 to safely stay under Pusher's 10KB limit
+    text: populatedMessage.text ? populatedMessage.text.substring(0, 1000) : "",    
     senderId: {
       _id: populatedMessage.senderId._id.toString(),
       name: populatedMessage.senderId.name,
       email: populatedMessage.senderId.email,
-      avatarUrl: populatedMessage.senderId.avatarUrl || null,
+      // Strip out base64 avatars if they exist, to save huge amounts of space
+      avatarUrl: populatedMessage.senderId.avatarUrl?.startsWith("data:image") 
+        ? null 
+        : (populatedMessage.senderId.avatarUrl || null),
     },
     createdAt: populatedMessage.createdAt,
     attachments: populatedMessage.attachments?.map((attachment: any) => ({
@@ -112,7 +118,13 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
     })) || []
   };
 
-  await pusherServer.trigger(chatId, "new-message", JSON.parse(JSON.stringify(leanMessage)));
+  // 3. Wrap Pusher trigger in try/catch to prevent server action crashes
+  try {
+    await pusherServer.trigger(chatId, "new-message", JSON.parse(JSON.stringify(pusherMessage)));
+  } catch (pusherError) {
+    console.error("Failed to push message to clients (likely 413 Payload Too Large):", pusherError);
+    // We don't throw here. The DB saved successfully, so we let the function continue.
+  }
 
   let participantsToNotify: string[] = [];
   if (type === "project") {
@@ -134,8 +146,13 @@ export async function sendMessage(chatId: string, type: "project" | "dm", formDa
         link: `/dashboard/inbox?type=${type}&id=${chatId}`
       })
     );
+  
+  try {
+    await Promise.all(notifications);
+  } catch (notificationError) {
+    console.error("Failed to push notification:", notificationError);
+  }
 
-  await Promise.all(notifications);
   revalidatePath(`/dashboard/inbox`);
 }
 

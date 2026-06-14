@@ -41,7 +41,6 @@ export default function CreateTaskModal({
     formData.append("projectId", projectId);
     formData.append("assignees", JSON.stringify(selectedAssignees));
     
-    // Automatically assign to the very first column on the board (Default: To Do)
     const defaultStatus = columns.length > 0 ? columns[0].id : "todo";
     formData.append("status", defaultStatus);
 
@@ -64,16 +63,16 @@ export default function CreateTaskModal({
           <Plus className="mr-2 h-4 w-4" />
           Add Task
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] border-zinc-200 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      </DialogTrigger>      
+      <DialogContent className="sm:max-w-[425px] w-[95vw] border-zinc-200 bg-white p-6 shadow-xl max-h-[85dvh] overflow-y-auto flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-bold text-zinc-900">Create New Task</DialogTitle>
           <DialogDescription className="text-zinc-500 font-medium">
             Define parameters and assign team members.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-5 mt-2">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-2 flex-1 overflow-y-visible">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-zinc-700 font-bold">Task Title</Label>
             <Input id="title" name="title" required className="bg-zinc-50 border-zinc-200 focus:bg-white" />
@@ -113,8 +112,8 @@ export default function CreateTaskModal({
             <Textarea id="description" name="description" className="resize-none h-24 bg-zinc-50 border-zinc-200 focus:bg-white" />
           </div>
 
-          <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isPending} className="bg-zinc-900 text-white min-w-[120px] font-bold">
+          <div className="flex justify-end pt-2 shrink-0">
+            <Button type="submit" disabled={isPending} className="bg-zinc-900 text-white min-w-[120px] font-bold pb-safe">
               {isPending ? <Spinner className="mr-2 h-4 w-4" /> : "Create Task"}
             </Button>
           </div>

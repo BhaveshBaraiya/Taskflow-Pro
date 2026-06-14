@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, X, Hexagon } from "lucide-react";
 import SidebarNav from "@/components/shared/SidebarNav";
 import WorkspaceSwitcher from "@/components/shared/WorkspaceSwitcher";
@@ -8,6 +9,12 @@ import UserSettings from "@/components/shared/UserSettings";
 
 export default function MobileHeader({ user }: { user: any }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname, searchParams]);
 
   return (
     <>

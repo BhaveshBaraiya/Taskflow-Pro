@@ -46,7 +46,7 @@ export async function getProjects() {
   const user = await User.findById(session.user.id);
   if (!user || !user.activeWorkspace) return [];
   
-  const projects = await Project.find({ workspaceId: user.activeWorkspace }).sort({ createdAt: -1 });
+  const projects = await Project.find({ workspaceId: user.activeWorkspace }).sort({ createdAt: -1 }).lean();
   return JSON.parse(JSON.stringify(projects));
 }
 
@@ -61,7 +61,7 @@ export async function getProjectById(projectId: string) {
   const project = await Project.findOne({ 
     _id: projectId,
     workspaceId: user.activeWorkspace
-  });
+  }).lean();
 
   if (!project) return null;
   return JSON.parse(JSON.stringify(project));

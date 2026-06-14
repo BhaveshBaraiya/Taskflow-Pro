@@ -124,7 +124,8 @@ export default function UserSettings({ user }: { user: any }) {
         </div>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[700px] w-[95vw] bg-white border-zinc-200 p-0 shadow-2xl overflow-hidden rounded-2xl flex flex-col md:flex-row h-[85vh] md:h-[600px]">
+      {/* FIX: h-[85vh] replaced with max-h-[90dvh] h-[90dvh] to actively respond to keyboard presence */}
+      <DialogContent className="sm:max-w-[700px] w-[95vw] bg-white border-zinc-200 p-0 shadow-2xl overflow-hidden rounded-2xl flex flex-col md:flex-row max-h-[90dvh] h-[90dvh] md:h-[600px]">
         <DialogTitle className="sr-only">User Settings</DialogTitle>
         
         <div className="w-full md:w-56 bg-zinc-50 border-b md:border-b-0 md:border-r border-zinc-100 p-3 pt-7 pr-14 md:pr-4 md:p-4 md:pt-4 flex flex-row md:flex-col gap-2 shrink-0 overflow-x-auto custom-scrollbar items-center md:items-stretch relative">
@@ -282,7 +283,7 @@ export default function UserSettings({ user }: { user: any }) {
             )}
           </div>
           
-          <div className="p-3 sm:p-4 border-t border-zinc-100 bg-zinc-50 md:hidden shrink-0">
+          <div className="p-3 sm:p-4 border-t border-zinc-100 bg-zinc-50 md:hidden shrink-0 pb-safe">
             <button onClick={() => signOut({ callbackUrl: "/login" })} className="flex items-center justify-center gap-2 text-sm font-bold px-3 py-2.5 rounded-lg text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 transition-colors w-full border border-zinc-200 shadow-sm bg-white">
               <LogOut className="h-4 w-4" /> <span>Logout</span>
             </button>

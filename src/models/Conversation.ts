@@ -10,6 +10,11 @@ const conversationSchema = new Schema(
   { timestamps: true }
 );
 
+conversationSchema.index({
+  workspaceId: 1,
+  participants: 1
+});
+
 const Conversation = models.Conversation || mongoose.model("Conversation", conversationSchema);
 
 export default Conversation;

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import AuthProvider from "@/components/providers/AuthProvider";
-import NextTopLoader from "nextjs-toploader"; // NEW: Imports the seamless micro-loader
+import QueryProvider from "@/components/providers/QueryProvider";
+import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ 
@@ -42,9 +43,11 @@ export default function RootLayout({
           easing="ease" 
           speed={200} 
         />
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

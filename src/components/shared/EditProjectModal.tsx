@@ -32,15 +32,17 @@ export default function EditProjectModal({ project }: { project: any }) {
           <Edit2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] border-zinc-200 bg-white p-6 shadow-xl">
-        <DialogHeader>
+      {/* Added max-h-[85dvh], flex flex-col, overflow-hidden, w-[95vw] */}
+      <DialogContent className="sm:max-w-[425px] w-[95vw] border-zinc-200 bg-white p-6 shadow-xl max-h-[85dvh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-bold text-zinc-900">Edit Project</DialogTitle>
           <DialogDescription className="text-zinc-500">
             Update the parameters for this workspace.
           </DialogDescription>
         </DialogHeader>
         
-        <form action={handleSubmit} className="space-y-5 mt-2">
+        {/* Made the form scrollable */}
+        <form action={handleSubmit} className="space-y-5 mt-2 flex-1 overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-zinc-700 font-semibold">Project Title</Label>
             <Input 
@@ -60,7 +62,7 @@ export default function EditProjectModal({ project }: { project: any }) {
               className="resize-none h-24 bg-zinc-50 border-zinc-200 focus:bg-white" 
             />
           </div>
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-2 shrink-0 pb-2">
             <Button 
               type="submit" 
               disabled={isPending}
