@@ -8,11 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useRouter } from "next/navigation";
 
-export default function WorkspaceSwitcher() {
-  const [workspaces, setWorkspaces] = useState<any[]>([]);
-  const [active, setActive] = useState<any>(null);
+export default function WorkspaceSwitcher({
+  initialWorkspaces = [],
+  initialActiveId = null
+}: {
+  initialWorkspaces?: any[];
+  initialActiveId?: string | null;
+}) {
+  // 🔥 FIXED: Initialize state immediately with server data
+  const [workspaces, setWorkspaces] = useState<any[]>(initialWorkspaces);
+  const [active, setActive] = useState<any>(
+    initialWorkspaces.find((w: any) => w._id === initialActiveId) || null
+  );
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  
+  // 🔥 FIXED: Loading starts as false if we have data from the server
+  const [loading, setLoading] = useState(initialWorkspaces.length === 0);
   const [view, setView] = useState<"list" | "create" | "join">("list");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -40,8 +51,11 @@ export default function WorkspaceSwitcher() {
   };
 
   useEffect(() => {
-    fetchWorkspaces();
-  }, []);
+    // Only fetch on mount if no initial props were passed (fallback mechanism)
+    if (initialWorkspaces.length === 0) {
+      fetchWorkspaces();
+    }
+  }, [initialWorkspaces.length]);
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -78,6 +92,7 @@ export default function WorkspaceSwitcher() {
 
   const handleSwitch = async (id: string) => {
     setIsOpen(false);
+    setLoading(true);
     await switchActiveWorkspace(id);
     await fetchWorkspaces();
     router.refresh();
@@ -134,7 +149,6 @@ export default function WorkspaceSwitcher() {
                       </div>
                       <div className="flex flex-col items-start min-w-0">
                         <span className="truncate text-sm font-bold text-zinc-700">{w.name}</span>
-                        {/* Displaying the invite code here! */}
                         <div 
                           onClick={(e) => copyCode(w.inviteCode, e)}
                           className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-blue-600 font-medium cursor-pointer"

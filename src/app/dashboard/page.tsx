@@ -8,6 +8,7 @@ import { Briefcase, CheckCircle2, Users, Activity, Plus, Clock, ArrowRight } fro
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import UserAvatar from "@/components/shared/UserAvatar";
+import Greeting from "@/components/shared/Greeting"; // 🔥 ADDED: Import the new client component
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -47,8 +48,7 @@ export default async function DashboardPage() {
   const teamMembersCount = workspace?.members?.length || 1;
   const workspaceName = workspace?.name || "Your Workspace";
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  // 🔥 REMOVED: SSR time calculation logic is completely gone from here.
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12 font-sans animate-in fade-in duration-300">
@@ -62,9 +62,10 @@ export default async function DashboardPage() {
             </span>
             {workspaceName} Overview
           </p>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-900">
-            {greeting}, {firstName}
-          </h1>
+          
+          {/* 🔥 ADDED: Client-side Greeting component replacing the static h1 */}
+          <Greeting name={firstName} />
+          
           <p className="text-zinc-500 mt-2 text-sm sm:text-base max-w-xl">
             Here is a summary of your active systems and pending tasks for today.
           </p>
