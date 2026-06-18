@@ -1,3 +1,7 @@
+"use client";
+
+// ADDED: Import React for memoization
+import React from "react"; 
 import { AlignLeft, Calendar } from "lucide-react";
 import UserAvatar from "@/components/shared/UserAvatar";
 
@@ -8,14 +12,14 @@ const priorityStyles = {
   LOW: "bg-blue-50 border-blue-200 hover:border-blue-300",
 };
 
-export default function TaskCard({ task, onClick }: { task: any, onClick: () => void }) {
+// MOVED OUTSIDE: So this regex function isn't recreated on every render
+const stripHtml = (html: string) => {
+  if (!html) return "";
+  return html.replace(/<[^>]*>?/gm, '').trim();
+};
+
+function TaskCardComponent({ task, onClick }: { task: any, onClick: () => void }) {
   const pStyle = priorityStyles[task.priority as keyof typeof priorityStyles] || "bg-white border-zinc-200 hover:border-zinc-300";
-
-  const stripHtml = (html: string) => {
-    if (!html) return "";
-    return html.replace(/<[^>]*>?/gm, '').trim();
-  };
-
   const plainDescription = stripHtml(task.description);
 
   return (
@@ -63,3 +67,13 @@ export default function TaskCard({ task, onClick }: { task: any, onClick: () => 
     </div>
   );
 }
+
+// THE MAGIC: Wrap the component in React.memo
+// Also provide a custom comparison function. Since we are passing an `onClick` 
+// function from a parent that might recreate on every render, we tell React 
+// to ONLY care if the `task._id` or `task.updatedAt` changes.
+export default React.memo(TaskCardComponent, (prevProps, nextProps) => {
+  return prevProps.task._id === nextProps.task._id && 
+         prevProps.task.status === nextProps.task.status &&
+         prevProps.task.title === nextProps.task.title;
+});

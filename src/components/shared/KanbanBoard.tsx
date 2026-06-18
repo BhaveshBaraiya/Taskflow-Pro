@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { updateTaskStatus } from "@/actions/task";
@@ -54,6 +54,10 @@ export default function KanbanBoard({
       router.replace(pathname, { scroll: false }); 
     }
   };
+
+  const handleTaskClick = useCallback((task: any) => {
+    setSelectedTask(task);
+  }, []);
 
   const handleAddColumn = async () => {
     if (!newColumnTitle.trim()) {
@@ -152,7 +156,8 @@ export default function KanbanBoard({
           <div 
             {...provided.droppableProps} 
             ref={provided.innerRef} 
-            className="flex h-full gap-6 overflow-x-auto pb-4 items-start"
+            // 🔥 FIX 1: Removed `items-start`. Now all columns stretch equally to the bottom, stopping macro-jerking.
+            className="flex h-full gap-6 overflow-x-auto pb-4"
           >
             {columns.map((column: any, index: number) => (
               <Draggable key={column.id} draggableId={column.id} index={index}>
@@ -163,17 +168,15 @@ export default function KanbanBoard({
                     style={{
                     ...provided.draggableProps.style,
                   } as any}
-                    // FIX 3: Added max-h-full so the column honors the screen boundaries
-                    className={`flex flex-col max-h-full w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2 z-50" : ""}`}
+                    // 🔥 FIX 2: Added `h-full` so the column takes up the full stretched height.
+                    className={`flex flex-col h-full max-h-full w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2 z-50" : ""}`}
                   >
                     <div 
                       {...provided.dragHandleProps}
-                      // FIX 4: Added shrink-0 so the header never collapses when tasks fill up
                       className="flex items-center justify-between mb-4 cursor-grab active:cursor-grabbing group shrink-0"
                     >
                       <div className="flex items-center gap-2 flex-1 mr-2 min-w-0">
                         <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${column.dotClass}`} />
-                        {/* Inline Editable Input */}
                         <input 
                           value={column.title}
                           onChange={(e) => handleTitleChange(column.id, e.target.value)}
@@ -207,8 +210,8 @@ export default function KanbanBoard({
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          // This flex-1 and overflow-y-auto will now correctly scroll the interior
-                          className={`flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-[50px] ${snapshot.isDraggingOver ? "bg-zinc-100/50 rounded-xl" : ""}`}
+                          // 🔥 FIX 3: Replaced `space-y-3` with `flex flex-col gap-3`. This stops the micro-jerking by using native flexbox gaps instead of margins.
+                          className={`flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar min-h-[150px] ${snapshot.isDraggingOver ? "bg-zinc-100/50 rounded-xl" : ""}`}
                         >
                           {tasks
                             .filter((t) => t.status === column.id)
@@ -221,7 +224,7 @@ export default function KanbanBoard({
                                     {...provided.dragHandleProps}
                                     style={provided.draggableProps.style as React.CSSProperties}
                                   >
-                                    <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                                    <TaskCard task={task} onClick={() => handleTaskClick(task)} />
                                   </div>
                                 )}
                               </Draggable>

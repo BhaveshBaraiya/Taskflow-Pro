@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Virtuoso } from "react-virtuoso";
 import { sendMessage, searchUsers, createConversation, getMessages } from "@/actions/chat";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +26,7 @@ type MessageData = {
   createdAt: string;
   senderId: { _id: string; name: string; email: string, avatarUrl?: string };
   attachments?: Attachment[];
+  isOptimistic?: boolean; // Added to track local-only messages
 };
 
 type UserResult = {
@@ -88,7 +89,6 @@ export default function ProjectChat({
   currentUserId?: string;
 }) {
   const queryClient = useQueryClient();
-  const [isSending, setIsSending] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [hasMounted, setHasMounted] = useState(false);
   const [lightbox, setLightbox] = useState<{ images: Attachment[], index: number } | null>(null);
@@ -102,7 +102,7 @@ export default function ProjectChat({
 
   useEffect(() => { setHasMounted(true); }, []);
 
-  // 🔥 1. TANSTACK QUERY: Handles instant fetching, caching, and background sync
+  // 1. TANSTACK QUERY: Fetches initial data
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["chat", chatId],
     queryFn: async () => {
@@ -111,7 +111,7 @@ export default function ProjectChat({
     },
   });
 
-  // 🔥 2. PUSHER UPDATES: Injects new messages seamlessly into the local cache
+  // 2. PUSHER UPDATES: Strict Deduplication applied here
   useEffect(() => {
     if (!pusherClient) return;
     const channel = pusherClient.subscribe(chatId);
@@ -119,8 +119,16 @@ export default function ProjectChat({
     const handleNewMessage = (newMessage: MessageData) => {
       queryClient.setQueryData<MessageData[]>(["chat", chatId], (oldMessages) => {
         if (!oldMessages) return [newMessage];
+        
+        // Block 1: Strict Deduplication by real DB ID
         if (oldMessages.some((msg) => msg._id === newMessage._id)) return oldMessages;
-        return [...oldMessages, newMessage];
+        
+        // Block 2: Remove the "Optimistic" temporary message now that the real one arrived
+        const cleanMessages = oldMessages.filter(
+          (msg) => !(msg._id.startsWith("temp-") && msg.text === newMessage.text && msg.senderId._id === newMessage.senderId._id)
+        );
+
+        return [...cleanMessages, newMessage];
       });
     };
     
@@ -132,6 +140,56 @@ export default function ProjectChat({
       }
     };
   }, [chatId, queryClient]);
+
+  // 🔥 3. THE OPTIMIZATION: Background Mutation with Optimistic UI
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({ formData, currentFiles, currentText }: { formData: FormData; currentFiles: File[]; currentText: string }) => {
+      let uploadedAttachments: Attachment[] = [];
+      if (currentFiles.length > 0) {
+        const res = await uploadFiles("chatAttachment", { files: currentFiles });
+        if (res && res.length > 0) {
+          uploadedAttachments = res.map((r, i) => ({
+            url: r.url,
+            fileType: currentFiles[i].type,
+            name: currentFiles[i].name
+          }));
+        }
+      }
+
+      if (uploadedAttachments.length > 0) {
+        formData.append("attachments", JSON.stringify(uploadedAttachments));
+      }
+
+      await sendMessage(chatId, chatType, formData);
+    },
+    onMutate: async ({ currentText, currentFiles }) => {
+      // Only do instantaneous optimistic updates for text messages. 
+      // Files need time to upload, so we show the spinner for those.
+      if (currentFiles.length === 0 && currentText.trim() !== "") {
+        await queryClient.cancelQueries({ queryKey: ["chat", chatId] });
+        const previousMessages = queryClient.getQueryData(["chat", chatId]);
+
+        const optimisticMsg: MessageData = {
+          _id: `temp-${Date.now()}`,
+          text: currentText,
+          createdAt: new Date().toISOString(),
+          senderId: { _id: currentUserId || "", name: "You", email: "" },
+          attachments: [],
+          isOptimistic: true, // Flag to show it's sending
+        };
+
+        queryClient.setQueryData<MessageData[]>(["chat", chatId], (old) => [...(old || []), optimisticMsg]);
+        return { previousMessages };
+      }
+    },
+    onError: (err, newTodo, context) => {
+      // If the server action fails, rollback the chat to remove the fake message
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["chat", chatId], context.previousMessages);
+      }
+    }
+  });
+
 
   const handleMentionClick = async (name: string) => {
     try {
@@ -195,34 +253,19 @@ export default function ProjectChat({
 
   const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSending(true);
-    const formData = new FormData(e.currentTarget);
     
-    try {
-      let uploadedAttachments: Attachment[] = [];
-      if (files.length > 0) {
-        const res = await uploadFiles("chatAttachment", { files });
-        if (res && res.length > 0) {
-          uploadedAttachments = res.map((r, i) => ({
-            url: r.url,
-            fileType: files[i].type,
-            name: files[i].name
-          }));
-        }
-      }
+    // Capture state immediately so we can clear the UI instantly
+    const formData = new FormData(e.currentTarget);
+    const currentFiles = [...files];
+    const currentText = text;
 
-      if (uploadedAttachments.length > 0) {
-        formData.append("attachments", JSON.stringify(uploadedAttachments));
-      }
+    // Instantly clear the inputs so the user can keep typing without lag
+    setText("");
+    setFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
-      await sendMessage(chatId, chatType, formData);
-      setText("");
-      setFiles([]);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSending(false);
-    }
+    // Fire the background mutation
+    sendMessageMutation.mutate({ formData, currentFiles, currentText });
   };
 
   const getFileName = (name: string) => name.length > 25 ? name.substring(0, 25) + '...' : name;
@@ -283,7 +326,7 @@ export default function ProjectChat({
         </div>
       </div>
       
-      {/* 🔥 3. VIRTUALIZATION & LOADING STATE */}
+      {/* VIRTUALIZATION & LOADING STATE */}
       <div className="flex-1 bg-zinc-50/30 relative">
         {isLoading && messages.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50/50 backdrop-blur-sm z-10">
@@ -299,18 +342,17 @@ export default function ProjectChat({
         ) : (
           <Virtuoso
             data={messages}
-            initialTopMostItemIndex={messages.length - 1} // Starts at the bottom of the chat
-            followOutput="smooth" // Auto-scrolls smoothly when new messages arrive
+            initialTopMostItemIndex={messages.length - 1} 
+            followOutput="smooth" 
             className="h-full w-full custom-scrollbar"
             itemContent={(index, msg) => {
               const isMe = msg.senderId._id === currentUserId;
               
-              // ADDED EXPLICIT TYPES HERE
               const images = msg.attachments?.filter((a: Attachment) => a.fileType && a.fileType.startsWith("image/")) || [];
               const documents = msg.attachments?.filter((a: Attachment) => a.fileType && !a.fileType.startsWith("image/")) || [];
 
               return (
-                <div className={`flex gap-4 px-6 py-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                <div className={`flex gap-4 px-6 py-3 ${isMe ? "flex-row-reverse" : "flex-row"} ${msg.isOptimistic ? "opacity-60" : "opacity-100"} transition-opacity duration-300`}>
                   <UserAvatar 
                     user={{ 
                       name: msg.senderId.name, 
@@ -328,7 +370,6 @@ export default function ProjectChat({
                     
                     {images.length > 0 && (
                       <div className={`grid gap-1.5 max-w-sm mb-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                        {/* ADDED EXPLICIT TYPES HERE */}
                         {images.slice(0, 4).map((img: Attachment, idx: number) => {
                           const isLast = idx === 3 && images.length > 4;
                           return (
@@ -347,7 +388,6 @@ export default function ProjectChat({
 
                     {documents.length > 0 && (
                       <div className="space-y-2 mb-2">
-                        {/* ADDED EXPLICIT TYPES HERE */}
                         {documents.map((doc: Attachment, idx: number) => (
                           <div key={idx} className="flex items-center justify-between p-1.5 bg-white border border-zinc-200 w-64 rounded-xl shadow-sm group">
                             <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 overflow-hidden flex-1 hover:bg-zinc-50 p-1.5 rounded-lg transition-colors cursor-pointer">
@@ -381,7 +421,6 @@ export default function ProjectChat({
       <div className="p-4 bg-white border-t border-zinc-100 flex flex-col shrink-0">
         {files.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
-            {/* ADDED EXPLICIT TYPES HERE */}
             {files.map((f: File, idx: number) => (
               <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1.5 rounded-lg shadow-sm max-w-xs">
                 {f.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 shrink-0" /> : <FileIcon className="h-4 w-4 shrink-0" />}
@@ -437,8 +476,8 @@ export default function ProjectChat({
             className="w-full h-12 bg-zinc-50 border-zinc-200 focus:bg-white focus:border-zinc-300 rounded-xl shadow-sm text-[15px] px-4" 
           />
           
-          <Button type="submit" disabled={isSending || (files.length === 0 && text.trim() === "")} size="icon" className="h-12 w-12 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all">
-            {isSending ? <Spinner className="h-5 w-5" /> : <Send className="h-5 w-5 ml-0.5" />}
+          <Button type="submit" disabled={sendMessageMutation.isPending || (files.length === 0 && text.trim() === "")} size="icon" className="h-12 w-12 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all">
+            {sendMessageMutation.isPending && files.length > 0 ? <Spinner className="h-5 w-5" /> : <Send className="h-5 w-5 ml-0.5" />}
           </Button>
         </form>
       </div>

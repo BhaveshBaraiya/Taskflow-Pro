@@ -16,41 +16,65 @@ export async function getInboxData() {
   if (!session?.user?.id) throw new Error("Unauthorized");
   
   await connectDB();
-  const user = await User.findById(session.user.id);
+  const user = await User.findById(session.user.id).select("activeWorkspace").lean();
   if (!user || !user.activeWorkspace) return [];
   
   const conversations = await Conversation.find({
     workspaceId: user.activeWorkspace,
     participants: session.user.id
-  }).populate("participants", "name email avatarUrl").lean();
+  })
+    .populate("participants", "name email avatarUrl")
+    .lean();
   
-  return JSON.parse(JSON.stringify(conversations));
+  // High-performance serialization mapping (Avoids JSON.parse block)
+  return conversations.map((conv: any) => ({
+    ...conv,
+    _id: conv._id.toString(),
+    workspaceId: conv.workspaceId?.toString(),
+    participants: conv.participants.map((p: any) => ({
+      ...p,
+      _id: p._id.toString()
+    }))
+  }));
 }
 
-export async function getMessages(chatId: string, type: "project" | "dm") {
+export async function getMessages(chatId: string, type: "project" | "dm", limit = 50) {
   const session = await auth();
   if (!session?.user?.id) return [];
   
   await connectDB();
-  const user = await User.findById(session.user.id);
+  const user = await User.findById(session.user.id).select("activeWorkspace").lean();
   if (!user || !user.activeWorkspace) return [];
 
-  // Enforce workspace-level isolation check
   if (type === "project") {
-    const project = await Project.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    const project = await Project.findOne({ _id: chatId, workspaceId: user.activeWorkspace }).select("_id").lean();
     if (!project) throw new Error("Unauthorized access to this project workspace.");
   } else {
-    const conversation = await Conversation.findOne({ _id: chatId, workspaceId: user.activeWorkspace });
+    const conversation = await Conversation.findOne({ _id: chatId, workspaceId: user.activeWorkspace }).select("_id").lean();
     if (!conversation) throw new Error("Unauthorized access to this conversation workspace.");
   }
 
   const query = type === "project" ? { projectId: chatId } : { conversationId: chatId };
+  
+  // Added strict limit (50 messages) to perfectly feed React Virtuoso window shifts
   const messages = await Message.find(query)
     .populate("senderId", "name email avatarUrl")
-    .sort({ createdAt: 1 })
+    .sort({ createdAt: -1 }) // Sort latest first for instant infinity loading shifts
+    .limit(limit)
     .lean();
     
-  return JSON.parse(JSON.stringify(messages));
+  return messages.reverse().map((msg: any) => ({
+    ...msg,
+    _id: msg._id.toString(),
+    senderId: {
+      ...msg.senderId,
+      _id: msg.senderId._id.toString()
+    },
+    workspaceId: msg.workspaceId?.toString(),
+    projectId: msg.projectId?.toString(),
+    conversationId: msg.conversationId?.toString(),
+    createdAt: msg.createdAt.toISOString()
+  }));
 }
 
 export async function sendMessage(chatId: string, type: "project" | "dm", formData: FormData) {

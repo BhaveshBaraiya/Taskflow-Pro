@@ -35,7 +35,7 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
 
   return (
     // FIX 1: Added overflow-hidden to the main container
-    <div className="flex h-[calc(100vh-4rem)] flex-col space-y-6 overflow-hidden">
+    <div className="flex h-[calc(100vh-1rem)] flex-col space-y-6 overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">{project.title}</h1>

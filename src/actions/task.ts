@@ -73,12 +73,28 @@ export async function getTasks(projectId: string) {
   if (!session?.user?.id) return [];
 
   await connectDB();
-  const user = await User.findById(session.user.id);
+  const user = await User.findById(session.user.id).select("activeWorkspace").lean();
   if (!user || !user.activeWorkspace) return [];
 
-  // Locked fetch strategy to context workspace
-  const tasks = await Task.find({ projectId, workspaceId: user.activeWorkspace }).populate("assignees", "name email avatarUrl");
-  return JSON.parse(JSON.stringify(tasks));
+  // Added .lean() to prevent complete Mongoose document instantiation
+  const tasks = await Task.find({ projectId, workspaceId: user.activeWorkspace })
+    .populate("assignees", "name email avatarUrl")
+    .lean();
+
+  return tasks.map((task: any) => ({
+    ...task,
+    _id: task._id.toString(),
+    projectId: task.projectId.toString(),
+    workspaceId: task.workspaceId.toString(),
+    assignees: task.assignees.map((a: any) => ({
+      ...a,
+      _id: a._id.toString()
+    })),
+    startDate: task.startDate?.toISOString() || null,
+    dueDate: task.dueDate?.toISOString() || null,
+    createdAt: task.createdAt?.toISOString(),
+    updatedAt: task.updatedAt?.toISOString()
+  }));
 }
 
 export async function updateTaskDetails(taskId: string, projectId: string, data: any) {
@@ -175,17 +191,31 @@ export async function getMyTasks() {
   if (!session?.user?.id) return [];
 
   await connectDB();
-  const user = await User.findById(session.user.id);
+  const user = await User.findById(session.user.id).select("activeWorkspace").lean();
   if (!user || !user.activeWorkspace) return [];
     
-  // Secured: Strictly isolate custom task feeds using the user's current selected activeWorkspace state context
   const tasks = await Task.find({ 
     assignees: session.user.id,
     workspaceId: user.activeWorkspace 
   })
     .populate("projectId", "title")
     .populate("assignees", "name avatarUrl")
-    .sort({ dueDate: 1, createdAt: -1 });
+    .sort({ dueDate: 1, createdAt: -1 })
+    .lean(); // Enforce optimized query processing
 
-  return JSON.parse(JSON.stringify(tasks));
+  return tasks.map((task: any) => ({
+    ...task,
+    _id: task._id.toString(),
+    projectId: {
+      ...task.projectId,
+      _id: task.projectId._id.toString()
+    },
+    workspaceId: task.workspaceId.toString(),
+    assignees: task.assignees.map((a: any) => ({
+      ...a,
+      _id: a._id.toString()
+    })),
+    startDate: task.startDate?.toISOString() || null,
+    dueDate: task.dueDate?.toISOString() || null
+  }));
 }
