@@ -163,11 +163,13 @@ export default function KanbanBoard({
                     style={{
                     ...provided.draggableProps.style,
                   } as any}
-                    className={`flex flex-col w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2 z-50" : ""}`}
+                    // FIX 3: Added max-h-full so the column honors the screen boundaries
+                    className={`flex flex-col max-h-full w-80 shrink-0 rounded-2xl border p-4 transition-colors ${column.colorClass} ${snapshot.isDragging ? "shadow-xl rotate-2 z-50" : ""}`}
                   >
                     <div 
                       {...provided.dragHandleProps}
-                      className="flex items-center justify-between mb-4 cursor-grab active:cursor-grabbing group"
+                      // FIX 4: Added shrink-0 so the header never collapses when tasks fill up
+                      className="flex items-center justify-between mb-4 cursor-grab active:cursor-grabbing group shrink-0"
                     >
                       <div className="flex items-center gap-2 flex-1 mr-2 min-w-0">
                         <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${column.dotClass}`} />
@@ -205,7 +207,8 @@ export default function KanbanBoard({
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-[150px] ${snapshot.isDraggingOver ? "bg-zinc-100/50 rounded-xl" : ""}`}
+                          // This flex-1 and overflow-y-auto will now correctly scroll the interior
+                          className={`flex-1 overflow-y-auto space-y-3 custom-scrollbar min-h-[50px] ${snapshot.isDraggingOver ? "bg-zinc-100/50 rounded-xl" : ""}`}
                         >
                           {tasks
                             .filter((t) => t.status === column.id)

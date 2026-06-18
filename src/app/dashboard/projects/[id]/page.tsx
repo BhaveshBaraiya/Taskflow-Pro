@@ -34,7 +34,8 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
   const allWorkspaceMembersList = workspaceMembers || [];
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col space-y-6">
+    // FIX 1: Added overflow-hidden to the main container
+    <div className="flex h-[calc(100vh-4rem)] flex-col space-y-6 overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">{project.title}</h1>
@@ -70,12 +71,15 @@ export default async function SingleProjectPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <ProjectTabs 
-        project={project} 
-        tasks={tasks} 
-        members={currentMembers} 
-        safeColumns={columns}
-      />
+      {/* FIX 2: Wrapped tabs in flex-1 overflow-hidden min-h-0 to lock board height */}
+      <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+        <ProjectTabs 
+          project={project} 
+          tasks={tasks} 
+          members={currentMembers} 
+          safeColumns={columns}
+        />
+      </div>
     </div>
   );
 }
